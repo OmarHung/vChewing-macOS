@@ -20,12 +20,14 @@ extension Homa {
       gramQuerier: @escaping Homa.GramQuerier,
       gramAvailabilityChecker: Homa.GramAvailabilityChecker? = nil,
       perceptor: Homa.BehaviorPerceptor? = nil,
+      candidateRarityThreshold: Double = Homa.Assembler.defaultCandidateRarityThreshold,
       config: Config = Config()
     ) {
       self.gramQuerier = gramQuerier
       self.gramAvailabilityChecker = gramAvailabilityChecker
       self.config = config
       self.perceptor = perceptor
+      self.candidateRarityThreshold = candidateRarityThreshold
       self.gramQueryCache = [:]
       self.gramQueryCacheOrder = []
     }
@@ -38,6 +40,7 @@ extension Homa {
       self.gramQuerier = target.gramQuerier
       self.gramAvailabilityChecker = target.gramAvailabilityChecker
       self.perceptor = target.perceptor
+      self.candidateRarityThreshold = target.candidateRarityThreshold
       self.gramQueryCache = target.gramQueryCache
       self.gramQueryCacheOrder = target.gramQueryCacheOrder
       self.mostRecentPathScore = target.mostRecentPathScore
@@ -58,6 +61,15 @@ extension Homa {
       case refreshExisting
     }
 
+    /// 選字窗排序時、判定候選為「極罕見」的分數門檻之預設值。詳見 `candidateRarityThreshold`。
+    ///
+    /// - Remark: 該數值依原廠詞庫的分數分佈校準而得。該詞庫的分數存在一個地板：最低的
+    /// 一批詞條全部聚集在 -9.32，且第 1 至第 10 百分位清一色是這個值——那正是詞典有收、
+    /// 但語料中不曾出現（頻次為零）的詞條所領到的兜底分數。`-9.2` 恰好切在這批地板值
+    /// 之上，精準涵蓋約一成三的候選，而不誤傷任何正常詞：雙音節的「一縷」（-8.496）與
+    /// 三音節的「水果汁」（-6.961）都仍有 0.7 以上的餘裕。
+    public static let defaultCandidateRarityThreshold: Double = -9.2
+
     /// 單元圖資料存取專用介面。
     public var gramQuerier: Homa.GramQuerier
     /// 輕量級的在庫檢查 API，供 insertKeys() 快速確認讀音是否存在，
@@ -65,6 +77,18 @@ extension Homa {
     public var gramAvailabilityChecker: Homa.GramAvailabilityChecker?
     /// 用以洞察使用者字詞節點覆寫行為的 API。
     public var perceptor: BehaviorPerceptor?
+
+    /// 選字窗排序時，判定候選為「極罕見」的分數門檻（log10 機率域，與節點權重同尺度）。
+    ///
+    /// 權重低於此門檻的候選一律沉至選字窗末尾，其餘候選則維持「先詞長、後權重」的既有
+    /// 排序。此舉針對的是詞庫中那些「詞典有收、語料無用例」的零頻詞條——它們領的是兜底
+    /// 分數，卻因為詞長排序的支配性而長期佔據選字窗前列。
+    ///
+    /// - Remark: 刻意只做這一件事。詞長排序本身承載著「敲了三個音通常是想要一個三字詞」
+    /// 這項輸入預期，且選字窗並不會高亮當前組句選中的詞、首項即是預設選項；若讓權重全面
+    /// 凌駕詞長，敲完「水果汁」後首項會變成權重更高的「果汁」，一選就把正確的組字拆掉。
+    /// 設為 `-.infinity` 可停用本機制，完整還原歷史行為。
+    public var candidateRarityThreshold: Double
     /// 組態設定。
     /// - Remark: setter 為 `internal`：組字器在模組內部需要就地改寫節點狀態（節點為
     /// Struct、無法再靠引用穿透值拷貝），但對模組外部維持唯讀。

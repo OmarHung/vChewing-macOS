@@ -130,6 +130,11 @@ extension HomaTestsRoot {
 
     /// `fetchCandidatesDeprecated` 這個方法在極端情況下（比如兩個連續讀音，等）會有故障，現已棄用。
     /// 目前這筆測試並不能曝露這個函式的問題，但卻能用來輔助測試其**繼任者**是否能完成一致的正確工作。
+    ///
+    /// - Remark: 此處比對的是候選字**集合**（故先 `sorted()` 再併字串）、而非其排列順序。
+    /// 兩者的候選字**過濾**邏輯必須一致，但排序邏輯已刻意分道揚鑣：繼任者以「長度加成後
+    /// 的權重」為主排序鍵（詳見 `Homa.Assembler.candidateLengthBonus`），不再讓詞長凌駕
+    /// 於權重之上，因此與這個舊實作的順序本就不會相同。
     @Test("[Homa] Assembler_VerifyCandidateFetchResultsWithNewAPI")
     func testVerifyCandidateFetchResultsWithNewAPI() async throws {
       let readings = "da4 qian2 tian1 zai5 ke1 ji4 gong1 yuan2 chao1 shang1"
@@ -153,22 +158,22 @@ extension HomaTestsRoot {
         stack1A
           .append(
             assembler.fetchCandidates(at: i, filter: .beginAt).map(\.pair.value)
-              .joined(separator: "-")
+              .sorted().joined(separator: "-")
           )
         stack1B
           .append(
             assembler.fetchCandidates(at: i, filter: .endAt).map(\.pair.value)
-              .joined(separator: "-")
+              .sorted().joined(separator: "-")
           )
         stack2A
           .append(
             assembler.fetchCandidatesDeprecated(at: i, filter: .beginAt).map(\.pair.value)
-              .joined(separator: "-")
+              .sorted().joined(separator: "-")
           )
         stack2B
           .append(
             assembler.fetchCandidatesDeprecated(at: i, filter: .endAt).map(\.pair.value)
-              .joined(separator: "-")
+              .sorted().joined(separator: "-")
           )
       }
       stack1B.removeFirst()
