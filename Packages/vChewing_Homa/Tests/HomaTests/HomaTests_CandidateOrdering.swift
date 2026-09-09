@@ -26,7 +26,7 @@ extension HomaTestsRoot {
     @Test("[Homa] CandidateOrdering_ZeroFrequencyLongWordMustSinkToBottom")
     func testZeroFrequencyLongWordMustSinkToBottom() throws {
       let ordered = try fetchOrderedValues(
-        threshold: Homa.Assembler.defaultCandidateRarityThreshold
+        threshold: Homa.Assembler.defaultRarityThreshold
       )
       // 領兜底分數的四音節詞沉至末位。
       #expect(ordered.last == "丙丙丙丙")
@@ -46,7 +46,7 @@ extension HomaTestsRoot {
       #expect(legacy == ["丁丁丁丁", "丙丙丙丙", "乙乙", "甲", "乙"])
       // 對照：預設門檻下，除了那個零頻詞被移到末尾之外，其餘相對次序不變。
       let ordered = try fetchOrderedValues(
-        threshold: Homa.Assembler.defaultCandidateRarityThreshold
+        threshold: Homa.Assembler.defaultRarityThreshold
       )
       #expect(legacy.filter { $0 != "丙丙丙丙" } == ordered.filter { $0 != "丙丙丙丙" })
     }
@@ -79,7 +79,7 @@ extension HomaTestsRoot {
       let mockLM = TestLM(rawData: Self.sampleData)
       let assembler = Homa.Assembler(
         gramQuerier: { mockLM.queryGrams($0) },
-        candidateRarityThreshold: threshold
+        rarityThreshold: threshold
       )
       for key in ["k1", "k2", "k3", "k4"] {
         try assembler.insertKey(key)

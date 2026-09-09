@@ -584,7 +584,11 @@ extension HomaTestsRoot {
         try assembler.insertKey($0.description)
       }
       var assembledSentence = assembler.assemble().values
-      #expect(assembledSentence == ["大樹", "新的", "蜜蜂"])
+      // 語料中的「新的」給的是 -9.399，已低於零頻兜底門檻，於是受
+      // `rarePhrasePerSyllableFloor` 的長度縮放約束（-6.0 × 2 = -12.0）而輸給逐字組合
+      // 「心」（-5.195）＋「的」（-5.054）＝ -10.249。原廠詞庫中 `ㄒㄧㄣ-ㄉㄜ˙` 本就
+      // 不存在「新的」這一詞條，此處的低分詞條係測試語料自行造出，故照新行為斷言。
+      #expect(assembledSentence == ["大樹", "心", "的", "蜜蜂"])
       let pos = 2
       do {
         #expect(

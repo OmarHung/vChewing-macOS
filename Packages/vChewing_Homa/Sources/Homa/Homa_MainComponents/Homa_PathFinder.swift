@@ -12,7 +12,12 @@ extension Homa.Assembler {
   @discardableResult
   public func assemble() -> [Homa.GramInPath] {
     var finalScore = Double(Int32.min)
-    let result = Homa.PathFinder.run(config: &config, finalScore: &finalScore)
+    let result = Homa.PathFinder.run(
+      config: &config,
+      rarityThreshold: rarityThreshold,
+      rarePhrasePerSyllableFloor: rarePhrasePerSyllableFloor,
+      finalScore: &finalScore
+    )
     mostRecentPathScore = finalScore
     assembledSentence = result
     return assembledSentence
@@ -35,7 +40,13 @@ extension Homa {
     ///   - finalScore: 寫出本次 DP 的整句最佳路徑總分（不可達時為 `Double(Int32.min)`）。
     /// - Returns: 組句結果（已選字詞陣列）。
     @discardableResult
-    static func run(config: inout Homa.Config, finalScore: inout Double) -> [Homa.GramInPath] {
+    static func run(
+      config: inout Homa.Config,
+      rarityThreshold: Double = -.infinity,
+      rarePhrasePerSyllableFloor: Double? = nil,
+      finalScore: inout Double
+    )
+      -> [Homa.GramInPath] {
       var newAssembledSentence = [Homa.GramInPath]()
       guard !config.segments.isEmpty else {
         finalScore = Double(Int32.min)
@@ -81,7 +92,16 @@ extension Homa {
             return parent[previousStart]?.gram?.current ?? ""
           }()
           var nodeCopy = nextNode
-          let newScore = dp[i] + nodeCopy.getScore(previous: previousCurrent, anterior: anteriorCurrent)
+          var segScore = nodeCopy.getScore(previous: previousCurrent, anterior: anteriorCurrent)
+          // 詞庫給零頻詞條的兜底分數是固定值、不隨音節數縮放，於是一個從未出現過的長詞
+          // 與一個從未出現過的短詞領到相同分數。DP 累加對數機率、節點越少總分越高，這類
+          // 長的零頻詞便會系統性地擊敗逐字組合。此處為其補上長度縮放：要求一個零頻的 n
+          // 音節詞至少付出 n 個中等常用字的代價。單音節元圖不受影響。
+          if let perSyllableFloor = rarePhrasePerSyllableFloor,
+             segScore <= rarityThreshold, length > 1 {
+            segScore = Swift.min(segScore, perSyllableFloor * Double(length))
+          }
+          let newScore = dp[i] + segScore
           visitedNodes.append((i, length, nodeCopy))
 
           // 如果找到更好的路徑，更新 dp 和 parent

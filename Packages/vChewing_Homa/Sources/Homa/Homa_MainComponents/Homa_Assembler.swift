@@ -20,14 +20,17 @@ extension Homa {
       gramQuerier: @escaping Homa.GramQuerier,
       gramAvailabilityChecker: Homa.GramAvailabilityChecker? = nil,
       perceptor: Homa.BehaviorPerceptor? = nil,
-      candidateRarityThreshold: Double = Homa.Assembler.defaultCandidateRarityThreshold,
+      rarityThreshold: Double = Homa.Assembler.defaultRarityThreshold,
+      rarePhrasePerSyllableFloor: Double? = Homa.Assembler
+        .defaultRarePhrasePerSyllableFloor,
       config: Config = Config()
     ) {
       self.gramQuerier = gramQuerier
       self.gramAvailabilityChecker = gramAvailabilityChecker
       self.config = config
       self.perceptor = perceptor
-      self.candidateRarityThreshold = candidateRarityThreshold
+      self.rarityThreshold = rarityThreshold
+      self.rarePhrasePerSyllableFloor = rarePhrasePerSyllableFloor
       self.gramQueryCache = [:]
       self.gramQueryCacheOrder = []
     }
@@ -40,7 +43,8 @@ extension Homa {
       self.gramQuerier = target.gramQuerier
       self.gramAvailabilityChecker = target.gramAvailabilityChecker
       self.perceptor = target.perceptor
-      self.candidateRarityThreshold = target.candidateRarityThreshold
+      self.rarityThreshold = target.rarityThreshold
+      self.rarePhrasePerSyllableFloor = target.rarePhrasePerSyllableFloor
       self.gramQueryCache = target.gramQueryCache
       self.gramQueryCacheOrder = target.gramQueryCacheOrder
       self.mostRecentPathScore = target.mostRecentPathScore
@@ -61,14 +65,22 @@ extension Homa {
       case refreshExisting
     }
 
-    /// 選字窗排序時、判定候選為「極罕見」的分數門檻之預設值。詳見 `candidateRarityThreshold`。
+    /// 判定一筆元圖為「零頻兜底詞」的分數門檻之預設值。詳見 `rarityThreshold`。
     ///
     /// - Remark: 該數值依原廠詞庫的分數分佈校準而得。該詞庫的分數存在一個地板：最低的
     /// 一批詞條全部聚集在 -9.32，且第 1 至第 10 百分位清一色是這個值——那正是詞典有收、
     /// 但語料中不曾出現（頻次為零）的詞條所領到的兜底分數。`-9.2` 恰好切在這批地板值
     /// 之上，精準涵蓋約一成三的候選，而不誤傷任何正常詞：雙音節的「一縷」（-8.496）與
     /// 三音節的「水果汁」（-6.961）都仍有 0.7 以上的餘裕。
-    public static let defaultCandidateRarityThreshold: Double = -9.2
+    public static let defaultRarityThreshold: Double = -9.2
+
+    /// 零頻兜底詞在組句評分時、每個音節所應付出之代價的預設值。詳見
+    /// `rarePhrasePerSyllableFloor`。
+    ///
+    /// - Remark: 該數值依原廠詞庫的分數分佈校準而得。兩個「中等常用度」的單字，其分數
+    /// 和約在 -10.9 至 -11.9 之間；取 `-6.0` 使雙音節零頻詞得到 -12.0，恰能讓這批逐字
+    /// 組合勝出，而當逐字組合本身更不可信時（例如兩字皆為罕用字），零頻詞仍會被選中。
+    public static let defaultRarePhrasePerSyllableFloor: Double = -6.0
 
     /// 單元圖資料存取專用介面。
     public var gramQuerier: Homa.GramQuerier
@@ -78,17 +90,27 @@ extension Homa {
     /// 用以洞察使用者字詞節點覆寫行為的 API。
     public var perceptor: BehaviorPerceptor?
 
-    /// 選字窗排序時，判定候選為「極罕見」的分數門檻（log10 機率域，與節點權重同尺度）。
+    /// 判定一筆元圖為「零頻兜底詞」的分數門檻（log10 機率域，與節點權重同尺度）。
     ///
-    /// 權重低於此門檻的候選一律沉至選字窗末尾，其餘候選則維持「先詞長、後權重」的既有
-    /// 排序。此舉針對的是詞庫中那些「詞典有收、語料無用例」的零頻詞條——它們領的是兜底
-    /// 分數，卻因為詞長排序的支配性而長期佔據選字窗前列。
+    /// 詞庫中有相當一批「詞典有收、語料無用例」的詞條，它們領的是一個固定的兜底分數。
+    /// 這批詞條會在兩處造成困擾，本門檻同時服務於兩者：
+    /// - **選字窗排序**：低於門檻者一律沉至末尾，其餘維持「先詞長、後權重」的既有排序。
+    /// - **組句評分**：低於門檻者另受 `rarePhrasePerSyllableFloor` 的長度縮放約束。
     ///
-    /// - Remark: 刻意只做這一件事。詞長排序本身承載著「敲了三個音通常是想要一個三字詞」
-    /// 這項輸入預期，且選字窗並不會高亮當前組句選中的詞、首項即是預設選項；若讓權重全面
-    /// 凌駕詞長，敲完「水果汁」後首項會變成權重更高的「果汁」，一選就把正確的組字拆掉。
-    /// 設為 `-.infinity` 可停用本機制，完整還原歷史行為。
-    public var candidateRarityThreshold: Double
+    /// 設為 `-.infinity` 可同時停用兩者，完整還原歷史行為。
+    public var rarityThreshold: Double
+
+    /// 零頻兜底詞在組句評分時、每個音節所應付出的代價（log10 機率域）。
+    ///
+    /// 詞庫給零頻詞條的兜底分數是**固定值**、不隨音節數縮放，因此一個從未出現過的四音節
+    /// 詞與一個從未出現過的雙音節詞領到相同的分數。DP 累加各節點的對數機率，節點越少總分
+    /// 越高，於是這類長的零頻詞會系統性地擊敗逐字組合——原廠詞庫中，光是雙音節就有七千
+    /// 餘筆「兩字皆常用、卻仍會被零頻詞蓋過」的讀音組合。
+    ///
+    /// 此處為低於 `rarityThreshold` 的元圖補上長度縮放：其分數至多為本值乘以音節數，
+    /// 相當於要求「一個零頻的 n 音節詞，至少得付出 n 個中等常用字的代價」。單音節元圖
+    /// 不受影響。設為 `nil` 可停用本機制。
+    public var rarePhrasePerSyllableFloor: Double?
     /// 組態設定。
     /// - Remark: setter 為 `internal`：組字器在模組內部需要就地改寫節點狀態（節點為
     /// Struct、無法再靠引用穿透值拷貝），但對模組外部維持唯讀。

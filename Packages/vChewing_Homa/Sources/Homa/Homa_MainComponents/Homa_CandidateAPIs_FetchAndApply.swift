@@ -69,8 +69,8 @@ extension Homa.Assembler {
     // 的地板為 -9.32），卻因為詞長是支配性的排序鍵而長期佔據選字窗前列。此處只把這批
     // 候選沉至末尾，不動其餘任何排序——詞長排序本身承載著「敲了三個音通常是想要一個
     // 三字詞」這項輸入預期，貿然讓權重全面凌駕詞長會連帶破壞選字與輪替的既有語義。
-    // `candidateRarityThreshold` 為 `-.infinity` 時無候選會被判為罕見，行為與歷史一致。
-    let rarityThreshold = candidateRarityThreshold
+    // `rarityThreshold` 為 `-.infinity` 時無候選會被判為罕見，行為與歷史一致。
+    let rarityThreshold = rarityThreshold
     let keyed = result.map { candidate -> (
       isNotRare: Bool, segLength: Int, weight: Double, joinedKey: String,
       candidate: Homa.CandidatePairWeighted
