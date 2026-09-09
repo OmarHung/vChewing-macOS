@@ -165,6 +165,11 @@ struct POMNGramSourceTests {
   }
 
   /// 快取指紋納入 POM 世代：記憶更新後查詢即反映新記憶。
+  ///
+  /// - Remark: 兩筆記憶皆以「媽」為資料值、僅前文不同。原先第二筆用的是「麻」，但該字
+  /// 屬於 `ㄇㄚˊ` 而非 `ㄇㄚ`，是一筆讀音與資料值錯配的記憶；此類記憶如今會被擋在注入
+  /// 之外（詳見 `POMGhostCandidateTests`），故改用合法配對，以免本測試的意圖（驗證快取
+  /// 指紋隨 POM 世代失效）被無關的把關邏輯干擾。
   @Test
   func testNGramSource_CacheFingerprintTracksPOMGeneration() {
     defer { LMAssembly.LMInstantiator.disconnectFactoryDictionary() }
@@ -177,11 +182,11 @@ struct POMNGramSourceTests {
     #expect(lmi.unigramsFor(keyArray: ["ㄇㄚ"]).contains { $0.current == "媽" })
     // 追加第二筆記憶（世代遞增→快取失效）。
     lmi.memorizePerception(
-      (ngramKey: "(ㄕˋ,是)&(ㄇㄚ,麻)", candidate: "麻"),
+      (ngramKey: "(ㄏㄠˇ,好)&(ㄇㄚ,媽)", candidate: "媽"),
       timestamp: Date().timeIntervalSince1970
     )
     let grams = lmi.unigramsFor(keyArray: ["ㄇㄚ"])
     #expect(grams.contains { $0.current == "媽" && $0.previous == "是" })
-    #expect(grams.contains { $0.current == "麻" && $0.previous == "是" })
+    #expect(grams.contains { $0.current == "媽" && $0.previous == "好" })
   }
 }

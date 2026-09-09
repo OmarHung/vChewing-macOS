@@ -892,10 +892,20 @@ extension LMAssembly {
       // 原始候選清單（fetchCandidates 僅排除 contextual grams）；unigram 記憶改由
       // Typewriter 建議通道浮現（受 fetch／「固定順序」等把守）。
       if config.fetchSuggestionsFromPerceptionOverrideModel {
+        // POM 的職責是調整「既有候選」的優先順序，而非憑空引入新的候選。因此只採信
+        // 資料值確實存在於本讀音候選集合內的記憶。
+        //
+        // 少了這道把關，一筆讀音與資料值錯配的壞記憶（例如把「嘞」記在 `ㄌㄜ˙` 名下，
+        // 而「嘞」實際上只屬於 `ㄌㄟ˙`）會被原樣注入成一個詞庫裡並不存在的候選，且因為
+        // POM 建議以高分覆寫套用，它會壓過該讀音真正的首選；更麻煩的是，套用之後的節點
+        // 會再度被觀測、把同一筆錯配寫回記憶，形成自我強化的迴圈——使用者除了整個清除
+        // 記憶之外別無他法。
+        let valuesAvailableForThisReading = Set(rawAllUnigrams.map(\.current))
         let pomGrams = lxPerceptor.perceptionsFor(
           headReading: keyChain, timestamp: Date().timeIntervalSince1970
         ).compactMap { pom -> Homa.Gram? in
           guard pom.previous != nil || pom.anterior != nil else { return nil }
+          guard valuesAvailableForThisReading.contains(pom.candidate) else { return nil }
           return Homa.Gram(
             keyArray: pom.headReading.split(separator: "-").map(String.init),
             current: pom.candidate,
@@ -1348,12 +1358,16 @@ extension LMAssembly {
       // 故 POM head 比對**顯式**以 `.toneInsensitivePrefix`（去聲調等值）進行——桶查詢本就不能
       // 釘定聲調；fast path 的單鍵具體讀音（含第一聲）則維持 `.exact` 逐字等值。
       if config.fetchSuggestionsFromPerceptionOverrideModel {
+        // 與上方逐字路徑同理：只採信資料值確實存在於本讀音候選集合內的記憶，
+        // 以免一筆讀音與資料值錯配的壞記憶被注入成詞庫裡並不存在的候選。
+        let valuesAvailableForThisReading = Set(rawAllUnigrams.map(\.current))
         let pomGrams = lxPerceptor.perceptionsFor(
           headReading: keyChain,
           timestamp: Date().timeIntervalSince1970,
           matchMode: .toneInsensitivePrefix
         ).compactMap { pom -> Homa.Gram? in
           guard pom.previous != nil || pom.anterior != nil else { return nil }
+          guard valuesAvailableForThisReading.contains(pom.candidate) else { return nil }
           return Homa.Gram(
             keyArray: pom.headReading.split(separator: "-").map(String.init),
             current: pom.candidate,
