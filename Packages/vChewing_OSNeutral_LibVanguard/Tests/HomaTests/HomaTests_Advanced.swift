@@ -15,9 +15,11 @@ extension HomaTestsRoot {
     /// 組字器的分詞功能測試，同時測試組字器的硬拷貝功能。
     @Test("[Homa] Assembler_HardCopyAndWordSegmentation")
     func testHardCopyAndWordSegmentation() async throws {
-      let regexToFilter = try Regex(".* 能留 .*\n")
+      // 等價於以正規表示式 `.* 能留 .*\n` 取代為空字串：刪去含「 能留 」且以換行收尾的整行。
       let mockLX = TestLX(
-        rawData: HomaTests.strLXSampleDataHutao.replacing(regexToFilter, with: ""),
+        rawData: HomaTests.strLXSampleDataHutao.removingNewlineTerminatedLines {
+          $0.contains(" 能留 ")
+        },
         readingSeparator: "",
         valueSegmentationOnly: true
       )
@@ -55,9 +57,11 @@ extension HomaTestsRoot {
     func testUpdateUnigramDataForAllNodes() async throws {
       let readings: [Substring] = "shu4 xin1 feng1".split(separator: " ")
       let newRawStringLX = HomaTests.strLXSampleDataEmoji + "\nshu4-xin1-feng1 樹新風 -9"
-      let regexToFilter = try Regex(".*(樹|新|風) .*")
+      // 等價於以正規表示式 `.*(樹|新|風) .*` 取代為空字串：清空相符的行（保留換行）。
       let mockLXWithFilter = TestLX(
-        rawData: newRawStringLX.replacing(regexToFilter, with: "")
+        rawData: newRawStringLX.blankingLines { line in
+          ["樹 ", "新 ", "風 "].contains { line.contains($0) }
+        }
       )
       let mockLX = TestLX(
         rawData: newRawStringLX
@@ -568,9 +572,11 @@ extension HomaTestsRoot {
     @Test("[Homa] Assembler_CandidateDisambiguationAndCursorStepwiseMovement")
     func testCandidateDisambiguationAndCursorStepwiseMovement() async throws {
       let readings: [Substring] = "da4 shu4 xin1 de5 mi4 feng1".split(separator: " ")
-      let regexToFilter = try Regex("\nshu4-xin1 .*")
+      // 等價於以正規表示式 `\nshu4-xin1 .*` 取代為空字串：刪去前有換行、且以「shu4-xin1 」起頭的整行。
       let mockLX = TestLX(
-        rawData: HomaTests.strLXSampleDataEmoji.replacing(regexToFilter, with: "")
+        rawData: HomaTests.strLXSampleDataEmoji.removingNewlinePrecededLines {
+          $0.hasPrefix("shu4-xin1 ")
+        }
       )
       let assembler = Homa.Assembler(
         gramQuerier: { mockLX.queryGrams($0) }, // 會回傳包含 Bigram 的結果。
@@ -1456,5 +1462,37 @@ extension HomaTestsRoot {
       // 不同鍵序列的路徑總分必須不同。
       #expect(scoreA != scoreB)
     }
+  }
+}
+
+// MARK: - Platform-neutral line filters for test corpora.
+
+/// 這些輔助函式取代測試內原先使用的 `Regex`／`String.replacing(_:with:)`（皆需 macOS 13+），
+/// 以便測試目標能在本套件宣告的最低平台（macOS 12）上編譯。語義與原正規表示式逐一對應。
+extension String {
+  /// 刪去符合條件、且其後緊接換行的整行（連同該換行）。
+  /// 對應 `.*<pattern>.*\n`：`.` 不跨行，故不以換行收尾的最末行不受影響。
+  fileprivate func removingNewlineTerminatedLines(where predicate: (Substring) -> Bool) -> String {
+    let lines = split(separator: "\n", omittingEmptySubsequences: false)
+    let lastIndex = lines.count - 1
+    return lines.enumerated().filter { index, line in
+      !(index < lastIndex && predicate(line))
+    }.map(\.element).joined(separator: "\n")
+  }
+
+  /// 刪去符合條件、且其前緊接換行的整行（連同該換行）。
+  /// 對應 `\n<pattern>.*`：首行之前沒有換行，故不受影響。
+  fileprivate func removingNewlinePrecededLines(where predicate: (Substring) -> Bool) -> String {
+    let lines = split(separator: "\n", omittingEmptySubsequences: false)
+    return lines.enumerated().filter { index, line in
+      !(index > 0 && predicate(line))
+    }.map(\.element).joined(separator: "\n")
+  }
+
+  /// 將符合條件的行清空為空行（保留換行）。對應 `.*<pattern>.*` 取代為空字串。
+  fileprivate func blankingLines(where predicate: (Substring) -> Bool) -> String {
+    split(separator: "\n", omittingEmptySubsequences: false)
+      .map { predicate($0) ? "" : $0 }
+      .joined(separator: "\n")
   }
 }

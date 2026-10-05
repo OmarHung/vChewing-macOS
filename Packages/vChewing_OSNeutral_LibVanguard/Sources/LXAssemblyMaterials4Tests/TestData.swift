@@ -24,7 +24,9 @@ public enum LXATestsData {
 
   private static func loadFixture(fileNameStem: String, ext: String) -> String {
     let url: URL?
-    #if canImport(Darwin)
+    // `#bundle` 需要 FoundationMacros（僅隨 Xcode 附帶）。僅安裝 Command Line Tools 的機器
+    // 可以 `swift test -Xswiftc -DVCHEWING_TESTS_NO_BUNDLE_MACRO` 改走 `Bundle.module`。
+    #if canImport(Darwin) && !VCHEWING_TESTS_NO_BUNDLE_MACRO
       if #available(macOS 12, *) {
         url = #bundle.url(forResource: fileNameStem, withExtension: ext)
       } else {
