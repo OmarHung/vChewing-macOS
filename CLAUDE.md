@@ -4,6 +4,7 @@ Guidance for Claude-family coding agents working on the vChewing (唯音) macOS 
 
 ## Quick Checklist
 
+- **Search**：For any file search or grep in the current git-indexed directory, use fff tools.
 - **Language**：Documentation、comments、reviews 僅能使用 English 或 zh-Hant-TW（檔名結尾 `-CHS` 可用 zh-Hans）。尤其注意中文資訊電子術語必須得是 zh-Hant-TW。
 - **Commits**：遵循 `ModuleName // SubModuleName: Change.` 的 Conventional Commit 風格。
 - **Scope**：主要工作區位於 `Packages/`。Linux 環境僅構建 `vChewing_Typewriter` 與其依賴。macOS 構建使用 `Package.swift` + `Makefile` + `BundleApps` CommandPlugin。
