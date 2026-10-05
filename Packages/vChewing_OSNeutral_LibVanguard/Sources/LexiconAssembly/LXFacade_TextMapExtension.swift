@@ -424,15 +424,39 @@ extension LXAssembly.LXFacade {
     return trie.hasGrams(keyArray, filterType: entryType, partiallyMatch: config.partialMatchEnabled)
   }
 
+  /// 檢查給定單元圖的每個漢字是否符合 CNS 11643 在該讀音下的收錄。
+  ///
+  /// 輕聲容錯：臺灣使用者習慣以一聲（不標聲調）輸入輕聲語助詞，原廠詞庫也刻意在一聲讀音下
+  /// 以完整權重收錄這些字（例如「嗎」同時收錄於 ㄇㄚ 與 ㄇㄚ˙、「了」收錄於 ㄌㄜ）；
+  /// 但 CNS 11643 只將它們列在輕聲讀音之下（ㄇㄚ 只有「媽、摩、螞、嬤……」而無「嗎」，
+  /// ㄇㄚ˙ 才有「嗎、嘛、麼……」；ㄌㄜ˙ 才有「了」）。若不做容錯，鍵入 ㄇㄚ 時「嗎」會被
+  /// 降權至 −9.5，導致「媽」勝出（例：「你知道我在哪媽？」）。
+  ///
+  /// 因此：某字不在該讀音的 CNS 清單內、且該讀音不帶任何聲調符號（ˊ ˇ ˋ ˙）時，
+  /// 會再查詢「該讀音＋˙」的 CNS 清單；若該字列於其中，則視為符合。
+  /// 已帶聲調的讀音（如 ㄇㄚˊ）不做此容錯。
   func checkCNSConformation(for unigram: Homa.Gram, keyArray: [String]) -> Bool {
     guard unigram.current.count == keyArray.count else { return true }
     let chars = unigram.current.map(\.description)
     for (index, key) in keyArray.enumerated() {
       guard !key.hasPrefix("_") else { continue }
       guard let matchedResult = factoryCNSFilterThreadFor(key: key) else { continue }
-      guard matchedResult.contains(chars[index]) else { return false }
+      guard !matchedResult.contains(chars[index]) else { continue }
+      guard Self.isToneless(bopomofoKey: key),
+            let neutralToneResult = factoryCNSFilterThreadFor(key: key + "˙"),
+            neutralToneResult.contains(chars[index])
+      else { return false }
     }
     return true
+  }
+
+  /// 注音聲調符號：ˊ (U+02CA)、ˇ (U+02C7)、ˋ (U+02CB)、˙ (U+02D9)。
+  private static let bopomofoToneMarks: Set<Character> = ["\u{02CA}", "\u{02C7}", "\u{02CB}", "\u{02D9}"]
+
+  /// 讀音是否不以任何聲調符號結尾（亦即一聲）。
+  private static func isToneless(bopomofoKey key: String) -> Bool {
+    guard let lastChar = key.last else { return false }
+    return !bopomofoToneMarks.contains(lastChar)
   }
 
   /// Automatically generated half-width punctuation aliases should stay selectable,
