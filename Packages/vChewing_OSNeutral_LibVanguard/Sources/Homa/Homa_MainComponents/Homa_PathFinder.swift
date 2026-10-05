@@ -116,7 +116,12 @@ extension Homa {
             dp[nextPos] = newScore
             // 幅節長度以段字典鍵為準：gram.keyArray 的長度可能與格位幅節長度
             // 不一致（如前綴匹配回傳的更長 gram），回溯時不得依賴後者。
-            parent[nextPos] = (nextGram, nodeCopy.isExplicitlyOverridden, length)
+            // 元圖須取**計分之後**的 `nodeCopy.currentGram`：`getScore` 會依語境移動
+            // `currentGramIndex`（命中雙元圖／三元圖時改指該元圖，未命中時退回單元圖），
+            // 計分前取得的 `nextGram` 可能是另一個值，回溯出的句子便會與路徑分數不一致。
+            parent[nextPos] = (
+              nodeCopy.currentGram ?? nextGram, nodeCopy.isExplicitlyOverridden, length
+            )
           }
         }
       }
