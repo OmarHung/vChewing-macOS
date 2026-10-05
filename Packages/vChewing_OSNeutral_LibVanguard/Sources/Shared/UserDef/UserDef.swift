@@ -119,6 +119,8 @@ public enum UserDef: String, CaseIterable, Identifiable, Sendable {
   case kCandidateUsageLedgerEnabled = "CandidateUsageLedgerEnabled"
   /// 隱藏偏好（不在設定介面出現）：刪除重打修正偵測。
   case kRetypeCorrectionDetectionEnabled = "RetypeCorrectionDetectionEnabled"
+  /// 隱藏偏好（不在設定介面出現）：組句時每個位置保留的候選路徑數（K-best），1 即傳統 1-best。
+  case kAssemblerBeamWidth = "AssemblerBeamWidth"
 
   case kUseSpaceToCommitHighlightedCandidate4SCPC = "UseSpaceToCommitHighlightedCandidate4SCPC"
   case kEnableCandidateWindowAnimation = "EnableCandidateWindowAnimation"
@@ -729,6 +731,7 @@ extension UserDef {
     case .kReducePOMLifetimeToNoMoreThan12Hours: return .bool(false)
     case .kCandidateUsageLedgerEnabled: return .bool(true)
     case .kRetypeCorrectionDetectionEnabled: return .bool(true)
+    case .kAssemblerBeamWidth: return .integer(4)
     case .kUseSpaceToCommitHighlightedCandidate4SCPC: return .bool(false)
     case .kEnableCandidateWindowAnimation: return .bool(true)
     case .kDisableSegmentedThickUnderlineInMarkingModeForManagedClients: return .bool(false)
@@ -758,6 +761,7 @@ extension UserDef {
     case .kIsDebugModeEnabled: return .init(userDef: self, shortTitle: "i18n:UserDef.kIsDebugModeEnabled.shortTitle")
     case .kFailureFlagForPOMObservation: return nil
     case .kRetypeCorrectionDetectionEnabled: return nil // 隱藏偏好：仍在觀察期，不提供設定介面與說明文字。
+    case .kAssemblerBeamWidth: return nil // 隱藏偏好：仍在觀察期，不提供設定介面與說明文字。
     case .kEnableCandidateWindowAnimation: return .init(
         userDef: self,
         shortTitle: "i18n:UserDef.kEnableCandidateWindowAnimation.shortTitle"

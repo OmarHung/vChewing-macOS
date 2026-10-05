@@ -192,6 +192,16 @@ struct RankingEvalOptionsTests {
   }
 
   @Test
+  func parsesBeamWidthOption() {
+    #expect(RankingEvalOptions.parse(arguments: ["--beam-width", "1", "a.tsv"])
+      == .run(RankingEvalOptions(inputPaths: ["a.tsv"], beamWidth: 1)))
+    #expect(RankingEvalOptions.parse(arguments: ["--beam-width", "0", "a.tsv"])
+      == .failure("--beam-width requires a positive integer."))
+    #expect(RankingEvalOptions.parse(arguments: ["--beam-width", "x", "a.tsv"])
+      == .failure("--beam-width requires a positive integer."))
+  }
+
+  @Test
   func rejectsInvalidArguments() {
     #expect(RankingEvalOptions.parse(arguments: []) == .failure("At least one TSV file is required."))
     #expect(RankingEvalOptions.parse(arguments: ["--json"]) == .failure("--json requires a file path."))

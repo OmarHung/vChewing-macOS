@@ -331,6 +331,98 @@ extension Homa.Node {
     return gramPrevious.count == 1
   }
 
+  // MARK: K-best 組句（beam search）專用
+
+  /// 依單元圖機率遞減，給出至多 `limit` 個「詞值互異」的單元圖索引（同分時依陣列順序）。
+  ///
+  /// 供 `Homa.PathFinder` 把同一節點內的其他高分詞值派生為獨立的組句狀態，
+  /// 讓近乎同分的同音字（如「嗎」與「媽」）得以並存、交由後方節點的語境決定取捨。
+  /// 只掃描一次元圖陣列並維護一個長度至多為 `limit` 的有序小陣列，不建立排序後的拷貝。
+  internal func beamAlternativeUnigramIndices(limit: Int) -> [Int] {
+    guard limit > 0, !grams.isEmpty else { return [] }
+    var picked: [Int] = []
+    picked.reserveCapacity(limit + 1)
+    for (index, gram) in grams.enumerated() {
+      guard Self.isContextFree(gram) else { continue }
+      let probability = gram.probability
+      // 已有同值者：機率較高（或同分而較早出現）者已在名單內，略過。
+      if picked.contains(where: { grams[$0].current == gram.current }) { continue }
+      var insertAt = picked.count
+      while insertAt > 0, probability > grams[picked[insertAt - 1]].probability {
+        insertAt -= 1
+      }
+      guard insertAt < limit else { continue }
+      picked.insert(index, at: insertAt)
+      if picked.count > limit { picked.removeLast() }
+    }
+    return picked
+  }
+
+  /// 是否含有任何帶語境之元圖（雙元圖／三元圖）。
+  internal var hasContextualGrams: Bool {
+    grams.contains { !Self.isContextFree($0) }
+  }
+
+  /// 所有帶語境之元圖（雙元圖／三元圖）的索引。
+  internal var contextualGramIndices: [Int] {
+    grams.indices.filter { !Self.isContextFree(grams[$0]) }
+  }
+
+  /// 為同節點的替代詞值計分：取「該單元圖分數（套用零頻縮放）」與「同值且語境相符之元圖
+  /// 機率」兩者中的較高者。語境比對規則與 `getScore(previous:anterior:rareFloor:)` 一致。
+  /// 本函式不改動節點狀態（替代詞值只存在於組句狀態中，回溯後才寫回）。
+  /// - Parameters:
+  ///   - unigramIndex: 替代詞值所在的單元圖索引。
+  ///   - contextualGramIndices: 預先算好的 `contextualGramIndices`（避免逐路徑重算）。
+  ///   - previous: 這條路徑上前述節點的詞值。
+  ///   - anterior: 這條路徑上前述節點再往前一格的詞值。
+  ///   - rareFloor: 零頻兜底詞的長度縮放規則（僅作用於單元圖分數）。
+  /// - Returns: 勝出之元圖的索引及其分數。
+  internal func beamAlternativeScore(
+    unigramIndex: Int,
+    contextualGramIndices: [Int],
+    previous: String,
+    anterior: String,
+    rareFloor: Homa.RarePhraseFloor?
+  )
+    -> (gramIndex: Int, score: Double) {
+    let unigram = grams[unigramIndex]
+    var best = (gramIndex: unigramIndex, score: rareFloor.applied(to: unigram.probability))
+    guard !previous.isEmpty else { return best }
+    for index in contextualGramIndices {
+      let gram = grams[index]
+      guard gram.current == unigram.current, gram.probability > best.score else { continue }
+      guard Self.contextPreviousMatches(gram.previous, actualPrevious: previous) else { continue }
+      let gramAnterior = gram.anterior ?? ""
+      // 三元圖須前驅二位相符；雙元圖則不得帶前驅二位條件。
+      guard gramAnterior.isEmpty || (!anterior.isEmpty && gramAnterior == anterior) else { continue }
+      best = (index, gram.probability)
+    }
+    return best
+  }
+
+  /// 元圖是否不帶語境條件（`previous` 與 `anterior` 皆為 nil 或空字串；與 `getScore` 的判準一致）。
+  @inline(__always)
+  internal static func isContextFree(_ gram: Homa.Gram) -> Bool {
+    (gram.previous ?? "").isEmpty && (gram.anterior ?? "").isEmpty
+  }
+
+  /// 讓節點改指組句回溯所得的元圖（僅移動 `currentGramIndex`，不改動覆寫狀態）。
+  internal mutating func selectGramForPath(at index: Int) {
+    guard grams.indices.contains(index) else { return }
+    currentGramIndex = index
+  }
+
+  /// 未被覆寫的節點退回首個單元圖。
+  ///
+  /// 用於組句結束後、不在最佳路徑上的節點：它們最後一次計分時所採用的語境元圖（或同節點
+  /// 替代詞值）未必屬於最終路徑，故退回無語境之選取——與 `getScore` 在語境不符時的行為一致。
+  internal mutating func resetContextualSelectionUnlessOverridden() {
+    guard currentOverrideType == nil else { return }
+    guard let firstUnigramIndex = grams.firstIndex(where: Self.isContextFree) else { return }
+    currentGramIndex = firstUnigramIndex
+  }
+
   /// 重設該節點的覆寫狀態、及其內部的元圖索引位置指向。
   internal mutating func reset() {
     currentGramIndex = 0

@@ -21,7 +21,8 @@
 | `baseline-2026-10-05.json` | 同一次執行的完整 JSON 報表，可與之後的執行結果直接 diff。 |
 
 TSV 格式：每行 `預期句子<TAB>讀音1 讀音2 ...`；`#` 開頭為註解。讀音須與辭典索引鍵一致
-（一聲不標、輕聲「˙」置於音節末、不套用變調）。
+（一聲不標、輕聲「˙」置於音節末、不套用變調）。標點可直接寫其索引鍵（如 `_punctuation_?` → 「？」、
+`_punctuation_>` → 「。」），以 `_` 起首的讀音改以完整查詢路徑確認是否存在。
 
 ## 1. 建置原廠辭典（txtMap）
 
@@ -64,9 +65,11 @@ swift run -c release vChewingRankingEval \
 - `--rare-floor <x|off>`：覆寫 `Homa.Assembler.rarePhrasePerSyllableFloor`（零頻兜底詞每音節的代價，
   多音節且分數不高於門檻者，其分數至多為「本值×音節數」）；`off` 表示停用（設為 nil）。
   未指定時沿用組字器預設值。
+- `--beam-width <n>`：覆寫 `Homa.Assembler.beamWidth`（組句時每個位置保留的候選路徑數；`1` 即傳統
+  1-best DP）。未指定時沿用組字器預設值。
 
 報表的 `Options` 列（JSON 為 `runInfo.options`）記錄的是**實際生效**的組字器參數，
-包括 `rarityThreshold` 與 `rarePhrasePerSyllableFloor`，因此可據以確認每次執行的條件。
+包括 `rarityThreshold`、`rarePhrasePerSyllableFloor` 與 `beamWidth`，因此可據以確認每次執行的條件。
 
 掃描參數範例：
 

@@ -1,5 +1,5 @@
 {
-  "count" : 121,
+  "count" : 122,
   "entries" : [
     {
       "default" : false,
@@ -3925,6 +3925,34 @@
       "range" : null,
       "rawValue" : "RetypeCorrectionDetectionEnabled",
       "type" : "bool"
+    },
+    {
+      "default" : 4,
+      "defaultsType" : "integer",
+      "exchangeBlacklisted" : false,
+      "key" : "kAssemblerBeamWidth",
+      "labels" : {
+        "en" : {
+
+        },
+        "ja" : {
+
+        },
+        "zh-Hans" : {
+
+        },
+        "zh-Hant" : {
+
+        }
+      },
+      "metadataPending" : false,
+      "metadataPendingReason" : "none",
+      "minimumOS" : 10.9,
+      "options" : null,
+      "optionsKind" : null,
+      "range" : null,
+      "rawValue" : "AssemblerBeamWidth",
+      "type" : "integer"
     },
     {
       "default" : false,

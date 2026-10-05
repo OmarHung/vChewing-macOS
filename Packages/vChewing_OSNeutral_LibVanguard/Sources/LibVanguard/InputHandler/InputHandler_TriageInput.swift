@@ -28,6 +28,9 @@ extension InputHandlerProtocol {
     guard let session = session else { return false }
     var state: State { session.state }
     currentLM.syncPrefs()
+    // 組句搜尋寬度（隱藏偏好）於每次按鍵時同步，使偏好變更即時生效。狂拼重切分等處的暫存
+    // 組字器以 `assembler.copy` 取得，會一併沿用此值，故其 `mostRecentPathScore` 與正式組字器可比。
+    assembler.beamWidth = prefs.assemblerBeamWidth
 
     // 狂拼固化：前方候選窗顯示中、按下「可能叫出選字窗」的鍵（Space／翻頁／候選導航
     // 方向鍵）時，先把前方投機讀音固化進組字器（投機→實體：只插聲調桶、不覆寫，

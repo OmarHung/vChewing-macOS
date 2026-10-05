@@ -14,7 +14,8 @@ public struct RankingEvalOptions: Hashable, Sendable {
     includePassingCases: Bool = false,
     maxSegLength: Int = Self.defaultMaxSegLength,
     rarityThreshold: Double? = nil,
-    rareFloor: RareFloorSetting = .assemblerDefault
+    rareFloor: RareFloorSetting = .assemblerDefault,
+    beamWidth: Int? = nil
   ) {
     self.inputPaths = inputPaths
     self.jsonOutputPath = jsonOutputPath
@@ -22,6 +23,7 @@ public struct RankingEvalOptions: Hashable, Sendable {
     self.maxSegLength = maxSegLength
     self.rarityThreshold = rarityThreshold
     self.rareFloor = rareFloor
+    self.beamWidth = beamWidth
   }
 
   // MARK: Public
@@ -60,6 +62,8 @@ public struct RankingEvalOptions: Hashable, Sendable {
     --rarity-threshold <x>   Override Homa.Assembler.rarityThreshold (default: assembler default).
     --rare-floor <x|off>     Override Homa.Assembler.rarePhrasePerSyllableFloor; `off` sets it to nil
                              (default: assembler default).
+    --beam-width <n>         Override Homa.Assembler.beamWidth (paths kept per position; 1 = classic
+                             1-best DP; default: assembler default).
     -h, --help               Show this help.
 
   TSV format: one case per line, `expected_sentence<TAB>reading1 reading2 ...`;
@@ -73,6 +77,8 @@ public struct RankingEvalOptions: Hashable, Sendable {
   /// nil 表示沿用組字器預設值。
   public let rarityThreshold: Double?
   public let rareFloor: RareFloorSetting
+  /// nil 表示沿用組字器預設值（`Homa.Assembler.beamWidth`）。
+  public let beamWidth: Int?
 
   public static func parse(arguments: [String]) -> ParseOutcome {
     var inputPaths: [String] = []
@@ -81,6 +87,7 @@ public struct RankingEvalOptions: Hashable, Sendable {
     var maxSegLength = defaultMaxSegLength
     var rarityThreshold: Double?
     var rareFloor = RareFloorSetting.assemblerDefault
+    var beamWidth: Int?
     var iterator = arguments.makeIterator()
     while let argument = iterator.next() {
       switch argument {
@@ -114,6 +121,11 @@ public struct RankingEvalOptions: Hashable, Sendable {
         } else {
           return .failure("--rare-floor requires a number or `off`.")
         }
+      case "--beam-width":
+        guard let rawValue = iterator.next(), let value = Int(rawValue), value > 0 else {
+          return .failure("--beam-width requires a positive integer.")
+        }
+        beamWidth = value
       default:
         guard !argument.hasPrefix("-") else {
           return .failure("Unknown option: \(argument)")
@@ -131,7 +143,8 @@ public struct RankingEvalOptions: Hashable, Sendable {
         includePassingCases: includePassingCases,
         maxSegLength: maxSegLength,
         rarityThreshold: rarityThreshold,
-        rareFloor: rareFloor
+        rareFloor: rareFloor,
+        beamWidth: beamWidth
       )
     )
   }

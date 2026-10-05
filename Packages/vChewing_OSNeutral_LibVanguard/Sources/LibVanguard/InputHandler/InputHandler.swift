@@ -31,6 +31,8 @@ public final class InputHandler: InputHandlerProtocol {
     )
     /// 同步組字器單個詞的幅節長度上限。
     assembler.maxSegLength = prefs.maxCandidateLength
+    /// 同步組字器組句時每個位置保留的候選路徑數（K-best）。
+    assembler.beamWidth = prefs.assemblerBeamWidth
     /// 將真正的 LM 查詢閉包綁至組字器。
     assembler.gramQuerier = { [weak self] keyArray in
       guard let self else { return [] }

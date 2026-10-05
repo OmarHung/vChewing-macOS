@@ -51,6 +51,7 @@ public protocol PrefMgrProtocol {
   var reducePOMLifetimeToNoMoreThan12Hours: Bool { get set }
   var candidateUsageLedgerEnabled: Bool { get set }
   var retypeCorrectionDetectionEnabled: Bool { get set }
+  var assemblerBeamWidth: Int { get set }
   var useFixedCandidateOrderOnSelection: Bool { get set }
   var autoCorrectReadingCombination: Bool { get set }
   var readingNarrationCoverage: Int { get set }

@@ -361,6 +361,17 @@ public final class PrefMgr: PrefMgrProtocol, Sendable {
   @AppProperty(userDef: .kFuriousTypingEnabled4Zhuyin)
   public var furiousTypingEnabled4Zhuyin: Bool
 
+  /// 組句時每個位置保留的候選路徑數（隱藏偏好），限定於 1...8。
+  @AppProperty(userDef: .kAssemblerBeamWidth)
+  public var assemblerBeamWidth: Int {
+    didSet {
+      // 必須確立條件，否則就會是無限迴圈。
+      if !(1 ... 8).contains(assemblerBeamWidth) {
+        assemblerBeamWidth = max(1, min(assemblerBeamWidth, 8))
+      }
+    }
+  }
+
   /// 舊版單一注拼槽 parser 屬性的相容層：依當前打字模式（注音/拼音）讀寫各自的 parser 槽位。
   ///
   /// - getter：`pinyinTypingEnabled` 時讀 `keyboardParser4Pinyin`，否則讀 `keyboardParser4Zhuyin`。

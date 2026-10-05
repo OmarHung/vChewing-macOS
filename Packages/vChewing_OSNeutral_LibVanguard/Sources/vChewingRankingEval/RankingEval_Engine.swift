@@ -19,11 +19,13 @@ struct RankingEvalEngine {
   init(
     maxSegLength: Int,
     rarityThreshold: Double? = nil,
-    rareFloor: RankingEvalOptions.RareFloorSetting = .assemblerDefault
+    rareFloor: RankingEvalOptions.RareFloorSetting = .assemblerDefault,
+    beamWidth: Int? = nil
   ) {
     self.maxSegLength = maxSegLength
     self.rarityThreshold = rarityThreshold
     self.rareFloor = rareFloor
+    self.beamWidth = beamWidth
     self.facade = LXAssembly.LXFacade(isCHS: false, pomDataURL: nil)
     facade.setOptions { config in
       // 以下對齊 `LXFacade.syncPrefs()` 在出廠預設偏好下的結果。
@@ -48,6 +50,8 @@ struct RankingEvalEngine {
   let maxSegLength: Int
   let rarityThreshold: Double?
   let rareFloor: RankingEvalOptions.RareFloorSetting
+  /// nil 表示沿用組字器預設值。
+  let beamWidth: Int?
 
   /// 實際生效的組態（含組字器參數的最終值），寫入報表以便比對。
   var optionsDescription: [String: String] {
@@ -62,13 +66,16 @@ struct RankingEvalEngine {
       "maxSegLength": probe.maxSegLength.description,
       "rarityThreshold": probe.rarityThreshold.description,
       "rarePhrasePerSyllableFloor": probe.rarePhrasePerSyllableFloor?.description ?? "off",
+      "beamWidth": probe.beamWidth.description,
     ]
   }
 
   func evaluate(_ evalCase: RankingEvalCase) -> RankingEvalCaseResult {
     let querier = facade.lxQuerier
     let missingReadings = evalCase.readings.filter { reading in
-      facade.factoryCoreUnigramsFor(key: reading, keyArray: [reading]).isEmpty
+      // 以 `_` 起首者（如標點 `_punctuation_?`）不在核心辭典內，改以完整查詢路徑確認。
+      guard !reading.hasPrefix("_") else { return !querier.hasGrams(for: [reading]) }
+      return facade.factoryCoreUnigramsFor(key: reading, keyArray: [reading]).isEmpty
     }
     let unreachablePositions = unreachablePositions(of: evalCase)
     guard missingReadings.isEmpty else {
@@ -131,6 +138,9 @@ struct RankingEvalEngine {
     case .assemblerDefault: break
     case .off: assembler.rarePhrasePerSyllableFloor = nil
     case let .value(floor): assembler.rarePhrasePerSyllableFloor = floor
+    }
+    if let beamWidth {
+      assembler.beamWidth = beamWidth
     }
     return assembler
   }

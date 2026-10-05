@@ -68,7 +68,8 @@ enum RankingEvalCLI {
     let engine = RankingEvalEngine(
       maxSegLength: options.maxSegLength,
       rarityThreshold: options.rarityThreshold,
-      rareFloor: options.rareFloor
+      rareFloor: options.rareFloor,
+      beamWidth: options.beamWidth
     )
     let results = allCases.map(engine.evaluate)
     let report = RankingEvalReport(

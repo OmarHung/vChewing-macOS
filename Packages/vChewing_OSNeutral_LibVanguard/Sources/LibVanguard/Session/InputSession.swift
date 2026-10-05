@@ -233,6 +233,7 @@ public final class InputSession: SessionProtocol, Sendable {
       inputHandler.pomSaveCallback = { SessionHost.shared.savePerceptionOverrideModelData() }
       inputHandler.usageLedgerSaveCallback = { SessionHost.shared.saveUsageLedgerData() }
       inputHandler.assembler.maxSegLength = prefs.maxCandidateLength
+      inputHandler.assembler.beamWidth = prefs.assemblerBeamWidth
       inputHandler.ensureKeyboardParser()
     } else {
       inputHandler = InputHandler(

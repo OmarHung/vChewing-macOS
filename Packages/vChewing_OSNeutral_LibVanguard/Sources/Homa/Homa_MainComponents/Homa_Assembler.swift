@@ -17,6 +17,7 @@ extension Homa {
     ///   - gramQuerier: 單元圖資料存取專用介面。
     ///   - rarityThreshold: 零頻兜底詞的分數門檻，詳見 `rarityThreshold`。
     ///   - rarePhrasePerSyllableFloor: 零頻兜底詞每音節的代價，詳見 `rarePhrasePerSyllableFloor`。
+    ///   - beamWidth: 組句時每個位置保留的候選路徑數上限，詳見 `beamWidth`。
     ///   - config: 引擎配置參數。
     public init(
       gramQuerier: @escaping Homa.GramQuerier,
@@ -25,6 +26,7 @@ extension Homa {
       rarityThreshold: Double = Homa.Assembler.defaultRarityThreshold,
       rarePhrasePerSyllableFloor: Double? = Homa.Assembler
         .defaultRarePhrasePerSyllableFloor,
+      beamWidth: Int = Homa.Assembler.defaultBeamWidth,
       config: Config = Config()
     ) {
       self.gramQuerier = gramQuerier
@@ -33,6 +35,7 @@ extension Homa {
       self.perceptor = perceptor
       self.rarityThreshold = rarityThreshold
       self.rarePhrasePerSyllableFloor = rarePhrasePerSyllableFloor
+      self.beamWidth = Swift.max(1, beamWidth)
       self.gramQueryCache = [:]
       self.gramQueryCacheOrder = []
     }
@@ -47,6 +50,7 @@ extension Homa {
       self.perceptor = target.perceptor
       self.rarityThreshold = target.rarityThreshold
       self.rarePhrasePerSyllableFloor = target.rarePhrasePerSyllableFloor
+      self.beamWidth = target.beamWidth
       self.gramQueryCache = target.gramQueryCache
       self.gramQueryCacheOrder = target.gramQueryCacheOrder
       self.mostRecentPathScore = target.mostRecentPathScore
@@ -98,6 +102,9 @@ extension Homa {
     /// 無從分辨「好的零頻複合詞」（很像、試過）與「壞的零頻詞」（使用者想打「你再」時的
     /// 「你在」），在這份資料上只是一把鈍器，故不作為預設值。
     public static let suggestedRarePhrasePerSyllableFloor: Double = -6.0
+
+    /// 組句時每個位置保留之候選路徑數（`beamWidth`）的預設值。詳見 `beamWidth`。
+    public static let defaultBeamWidth: Int = 4
 
     /// 單元圖資料存取專用介面。
     public var gramQuerier: Homa.GramQuerier
@@ -154,6 +161,26 @@ extension Homa {
     /// - Remark: setter 為 `internal`：組句邏輯位於模組內的其它檔案，需要跨檔案寫入；
     ///   對模組外部維持唯讀。
     public internal(set) var mostRecentPathScore: Double = .init(Int32.min)
+
+    /// 組句（`assemble()`）時每個位置保留的候選路徑數上限（K-best／beam search），至少為 1。
+    ///
+    /// 傳統的 DAG-DP 在每個位置只保留一條最佳路徑：後方節點計分時，其前驅只能是該位置上
+    /// 已經勝出的那一個詞值。若前方有兩個近乎同分的候選（例如「ㄇㄚ」的「嗎」−5.118 與
+    /// 「媽」−5.175），後方節點的語境元圖（例如「嗎」之後接「？」）就無從反過來影響前方的取捨。
+    /// 保留 K 條路徑（並把同一節點內的其他高分詞值也視為獨立路徑）之後，語境元圖便能讓
+    /// 較符合上下文的前驅勝出。
+    ///
+    /// - `1`：與傳統 1-best DP 的結果逐位元一致。
+    /// - 預設 `4`（`defaultBeamWidth`）：計算量至多約為 1-best 的 K² 倍（K 條路徑 × 每節點至多 K 個
+    ///   詞值），實測仍在毫秒等級以內。
+    ///
+    /// 小於 1 的值一律視為 1。`init(from:)`／`copy` 會一併複製此值，以確保比較 `mostRecentPathScore`
+    /// 的暫存組字器與正式組字器使用相同的搜尋寬度。
+    public var beamWidth: Int {
+      didSet {
+        if beamWidth < 1 { beamWidth = 1 }
+      }
+    }
 
     /// 最近一次組句結果。
     public var assembledSentence: [GramInPath] {
