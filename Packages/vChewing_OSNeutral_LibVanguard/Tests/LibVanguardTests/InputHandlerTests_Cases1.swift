@@ -3966,10 +3966,11 @@ extension LibVanguardTestsRoot.InputHandlerTests {
       testSession.resetInputHandler(forceComposerCleanup: true)
     }
 
-    // 語料：ㄕˋ→是（主段）、ㄇㄚ 桶→媽(-8)／麻(-8)／嗎(-2，LM 最佳猜測)。
+    // 語料：ㄕˋ→是（主段）、ㄇㄚ 桶→媽(-5)／麻(-8)／嗎(-2，LM 最佳猜測)。
+    // POM 語境加分為分級制（上限 6.0、新鮮一次約 +3.9），故記憶詞與 LM 最佳猜測的分數差須小於加分上限（此處 3）。
     [
       .init(keyArray: ["ㄕˋ"], value: "是", score: -6),
-      .init(keyArray: ["ㄇㄚ"], value: "媽", score: -8),
+      .init(keyArray: ["ㄇㄚ"], value: "媽", score: -5),
       .init(keyArray: ["ㄇㄚˊ"], value: "麻", score: -8),
       .init(keyArray: ["ㄇㄚ˙"], value: "嗎", score: -2),
     ].forEach {
@@ -4020,9 +4021,10 @@ extension LibVanguardTestsRoot.InputHandlerTests {
       testSession.resetInputHandler(forceComposerCleanup: true)
     }
 
+    // POM 語境加分為分級制（上限 6.0、新鮮一次約 +3.9），故記憶詞與 LM 最佳猜測的分數差須小於加分上限（此處 3）。
     [
       .init(keyArray: ["ㄕˋ"], value: "是", score: -6),
-      .init(keyArray: ["ㄇㄚ"], value: "媽", score: -8),
+      .init(keyArray: ["ㄇㄚ"], value: "媽", score: -5),
       .init(keyArray: ["ㄇㄚˊ"], value: "麻", score: -8),
       .init(keyArray: ["ㄇㄚ˙"], value: "嗎", score: -2),
     ].forEach {
@@ -4342,9 +4344,10 @@ extension LibVanguardTestsRoot.InputHandlerTests {
       testSession.resetInputHandler(forceComposerCleanup: true)
     }
 
+    // POM 語境加分為分級制（上限 6.0、新鮮一次約 +3.9），故記憶詞與 LM 最佳猜測的分數差須小於加分上限（此處 3）。
     [
       .init(keyArray: ["ㄕˋ"], value: "是", score: -6),
-      .init(keyArray: ["ㄇㄚ"], value: "媽", score: -8),
+      .init(keyArray: ["ㄇㄚ"], value: "媽", score: -5),
       .init(keyArray: ["ㄇㄚˊ"], value: "麻", score: -8),
       .init(keyArray: ["ㄇㄚ˙"], value: "嗎", score: -2),
     ].forEach {
@@ -4438,9 +4441,10 @@ extension LibVanguardTestsRoot.InputHandlerTests {
       testSession.resetInputHandler(forceComposerCleanup: true)
     }
 
+    // POM 語境加分為分級制（上限 6.0、新鮮一次約 +3.9），故記憶詞與 LM 最佳猜測的分數差須小於加分上限（此處 3）。
     [
       .init(keyArray: ["ㄕˋ"], value: "是", score: -6),
-      .init(keyArray: ["ㄇㄚ"], value: "媽", score: -8),
+      .init(keyArray: ["ㄇㄚ"], value: "媽", score: -5),
       .init(keyArray: ["ㄇㄚˊ"], value: "麻", score: -8),
       .init(keyArray: ["ㄇㄚ˙"], value: "嗎", score: -2),
     ].forEach {

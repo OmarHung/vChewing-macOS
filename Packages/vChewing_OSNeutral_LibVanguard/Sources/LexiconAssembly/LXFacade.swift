@@ -1133,18 +1133,15 @@ extension LXAssembly {
         // 會再度被觀測、把同一筆錯配寫回記憶，形成自我強化的迴圈——使用者除了整個清除
         // 記憶之外別無他法。
         let valuesAvailableForThisReading = Set(rawAllUnigrams.map(\.current))
-        let pomGrams = lxPerceptor.perceptionsFor(
+        let pomPerceptions = lxPerceptor.perceptionsFor(
           headReading: keyChain, timestamp: Date().timeIntervalSince1970
-        ).compactMap { pom -> Homa.Gram? in
-          guard pom.previous != nil || pom.anterior != nil else { return nil }
-          guard valuesAvailableForThisReading.contains(pom.candidate) else { return nil }
-          return Homa.Gram(
-            keyArray: pom.headReading.split(separator: "-").map(String.init),
-            current: pom.candidate,
-            previous: pom.previous, anterior: pom.anterior,
-            probability: pom.probability
-          )
+        ).filter { pom in
+          guard pom.previous != nil || pom.anterior != nil else { return false }
+          return valuesAvailableForThisReading.contains(pom.candidate)
         }
+        // 語境元圖機率＝詞庫基準分數＋分級加分（B2），多字前文另派生尾字退避元圖（B3）。
+        // 詳見 `shapePOMContextualGrams(_:lexiconUnigrams:)`。
+        let pomGrams = Self.shapePOMContextualGrams(pomPerceptions, lexiconUnigrams: rawAllUnigrams)
         rawAllUnigrams.append(contentsOf: pomGrams)
       }
       // Store in LRU cache with size limit
@@ -1572,20 +1569,16 @@ extension LXAssembly {
         // 與上方逐字路徑同理：只採信資料值確實存在於本讀音候選集合內的記憶，
         // 以免一筆讀音與資料值錯配的壞記憶被注入成詞庫裡並不存在的候選。
         let valuesAvailableForThisReading = Set(rawAllUnigrams.map(\.current))
-        let pomGrams = lxPerceptor.perceptionsFor(
+        let pomPerceptions = lxPerceptor.perceptionsFor(
           headReading: keyChain,
           timestamp: Date().timeIntervalSince1970,
           matchMode: .toneInsensitivePrefix
-        ).compactMap { pom -> Homa.Gram? in
-          guard pom.previous != nil || pom.anterior != nil else { return nil }
-          guard valuesAvailableForThisReading.contains(pom.candidate) else { return nil }
-          return Homa.Gram(
-            keyArray: pom.headReading.split(separator: "-").map(String.init),
-            current: pom.candidate,
-            previous: pom.previous, anterior: pom.anterior,
-            probability: pom.probability
-          )
+        ).filter { pom in
+          guard pom.previous != nil || pom.anterior != nil else { return false }
+          return valuesAvailableForThisReading.contains(pom.candidate)
         }
+        // 計分規則同逐字路徑（B2 分級加分、B3 尾字退避）。
+        let pomGrams = Self.shapePOMContextualGrams(pomPerceptions, lexiconUnigrams: rawAllUnigrams)
         rawAllUnigrams.append(contentsOf: pomGrams)
       }
       unigramLRUCache[cacheKey] = rawAllUnigrams

@@ -215,6 +215,18 @@ extension Homa.Node {
   /// - Remark: 這個函式會根據比對到的前述節點內容，來查詢可能的雙元／三元圖資料。
   /// 一旦有比對到相符的雙元／三元圖資料，就會比較其權重與當前節點的權重，並選擇
   /// 權重較高的那個、然後**據此視情況自動修改這個節點的覆寫狀態種類**。
+  ///
+  /// 前文比對規則（`previous`）：
+  /// - 整詞比對：元圖的 `previous` 與前述節點的整個詞值逐字相等。
+  /// - 尾字比對：元圖的 `previous` 恰為**單一字元**時，只要前述節點的詞值以該字元**結尾**
+  ///   亦算命中（字元以 Swift `Character` 比對，不會切斷組合字元或異體字選擇器）。
+  ///   用意是讓前一個詞換了分法（「分不清」vs「不」、「檔案」vs「案」）時語境記憶仍能生效；
+  ///   POM 注入端會為多字前文的記憶另派生一筆加分打折的尾字版本，故兩者同時命中時，
+  ///   機率較高的整詞元圖勝出。
+  /// - `anterior`（三元圖的前驅之二）一律維持整詞比對、不做尾字放寬。
+  ///
+  /// 採用命中的語境元圖時，以**該元圖自身的** `previous`／`anterior` 定位
+  /// （見 `adoptGramForContext(keyArray:value:previous:anterior:)`），故尾字比對同樣能正確選中。
   /// - Parameters:
   ///   - previous: 前述節點內容，用以查詢可能的雙元圖資料。
   ///   - anterior: 前述節點再往前一格的內容，用以查詢可能的三元圖資料（可選）。
@@ -243,7 +255,7 @@ extension Homa.Node {
         firstUnigramProbability = gram.probability
         firstUnigramIndex = index
       }
-      guard gram.previous == previous else { continue }
+      guard Self.contextPreviousMatches(gram.previous, actualPrevious: previous) else { continue }
       // 三元圖：需 exact 匹配前驅二位（anterior 語境存在時才可比對）。
       if let anterior, !anterior.isEmpty, gram.anterior == anterior {
         guard let currentBest = bestTrigram else {
@@ -301,6 +313,22 @@ extension Homa.Node {
       }
       return unigramBaseline
     }
+  }
+
+  /// 判斷語境元圖的前文條件是否與前述節點相符。
+  ///
+  /// 整詞相等即命中；元圖前文恰為單一字元時，前述節點詞值以該字元結尾亦算命中（尾字比對）。
+  /// 詳見 `getScore(previous:anterior:rareFloor:)` 的說明。
+  /// - Parameters:
+  ///   - gramPrevious: 元圖所記載的前文條件。
+  ///   - actualPrevious: DP 最佳路徑上前述節點的詞值。
+  @inline(__always)
+  internal static func contextPreviousMatches(_ gramPrevious: String?, actualPrevious: String) -> Bool {
+    guard let gramPrevious, !gramPrevious.isEmpty else { return false }
+    if gramPrevious == actualPrevious { return true }
+    // 先以首字元粗篩（成本低），再確認元圖前文確實只有一個字元。
+    guard let lastActual = actualPrevious.last, gramPrevious.first == lastActual else { return false }
+    return gramPrevious.count == 1
   }
 
   /// 重設該節點的覆寫狀態、及其內部的元圖索引位置指向。
