@@ -1118,6 +1118,9 @@ extension LXAssembly {
         )
       rawAllUnigrams.consolidate(filter: dataAsFilter)
       rawAllUnigrams.sort { $0.probability > $1.probability }
+      // 句末語氣詞後接全形標點的語境元圖：附加於單元圖之後（與 POM 記憶同理，不經 consolidate）。
+      // 詳見 `punctuationContextGrams(keyArray:lexiconUnigrams:)`。
+      let punctuationGrams = Self.punctuationContextGrams(keyArray: flatKeyArray, lexiconUnigrams: rawAllUnigrams)
       // POM 記憶作為 n-gram 統計來源（S2）：附加於 unigram 之後、不經 consolidate
       // （避免與同名 unigram 去重互擾）。僅餵「帶前後文」的 contextual 記憶——bare unigram
       // 記憶對 DP 無貢獻（節點 unigramScore 取陣列首筆、不選中尾端注入）且會污染選字窗
@@ -1144,6 +1147,7 @@ extension LXAssembly {
         let pomGrams = Self.shapePOMContextualGrams(pomPerceptions, lexiconUnigrams: rawAllUnigrams)
         rawAllUnigrams.append(contentsOf: pomGrams)
       }
+      rawAllUnigrams.append(contentsOf: punctuationGrams)
       // Store in LRU cache with size limit
       unigramLRUCache[cacheKey] = rawAllUnigrams
       if unigramLRUCache.count > 1_024 {
@@ -1561,6 +1565,8 @@ extension LXAssembly {
         )
       rawAllUnigrams.consolidate(filter: dataAsFilter)
       rawAllUnigrams.sort { $0.probability > $1.probability }
+      // 句末語氣詞後接全形標點的語境元圖——同 fast path。
+      let punctuationGrams = Self.punctuationContextGrams(keyArray: flatKeyArray, lexiconUnigrams: rawAllUnigrams)
       // POM 記憶作為 n-gram 統計來源——同 fast path：僅餵「帶前後文」的 contextual 記憶。
       // 此為聲調桶（[PossibleKey] alternatives）路徑，keyChain 為各位置代表鍵（無調字形），
       // 故 POM head 比對**顯式**以 `.toneInsensitivePrefix`（去聲調等值）進行——桶查詢本就不能
@@ -1581,6 +1587,7 @@ extension LXAssembly {
         let pomGrams = Self.shapePOMContextualGrams(pomPerceptions, lexiconUnigrams: rawAllUnigrams)
         rawAllUnigrams.append(contentsOf: pomGrams)
       }
+      rawAllUnigrams.append(contentsOf: punctuationGrams)
       unigramLRUCache[cacheKey] = rawAllUnigrams
       if unigramLRUCache.count > 1_024 {
         let half = unigramLRUCache.count / 2

@@ -233,6 +233,8 @@ Enter 遞交：commit(text:) → inputHandler.clear()（不留任何紀錄）
 | C1–C4 刪除重打偵測 | 完成 | `RecentCommitLedger`＋`InputHandler_RetypeCorrection.swift`：遞交快照→空狀態 BackSpace 計數（≤3、10 秒內、同 client、無其他按鍵）→重打相同讀音時以次佳候選替換、候選窗把被拒值移到同詞長群組尾；Enter 隱式確認寫一筆 POM，若被拒值來自 POM 則移除該筆記憶。隱藏偏好 `RetypeCorrectionDetectionEnabled`（預設開）。狂打、SCPC、磁帶模式不啟用。測試 IH730–742。未實作 `clientAttributedSubstring` 驗證。 |
 | B6 詞庫字頻重算 | 已實驗、結果為負、預設關閉 | 在 `~/myprojects/vChewing-VanguardLexicon` 分支 `research/char-frequency-from-phrases`（commit 60240ca5）實作「由詞表反推字頻」三種模式（replace／blend／shift，`VC_CHARFREQ_MODE`），種子集 65 句與保留集 44 句皆變差（最好的 shift γ=0.1 仍掉 3＋2 句）。原因：字在詞表內出現的次數不等於它單用的頻率——吧、又、跟、嗎、裡、就這類虛詞很少在詞條內、被壓低，作、市、根、罷這類構詞字被抬高。詳見該倉庫 `ValueAdds/Specs/CharFrequencyFromPhrases.md`。結論：單字分數必須來自真實語料字頻（外部資料），詞表反推不可行。 |
 | B5 原廠 bigram | 未動 | 需外部語料；與 B6 結論一致，資料層改善須引入語料。 |
+| Phase 5A K-best 組句（F6） | 完成 | `Homa.Assembler.beamWidth`（預設 4、下限 1，`copy` 一併複製）；`PathFinder` 每位置保留至多 K 條路徑（分數、元圖索引、幅節長度、回溯指標、末節點與前驅詞值），以「末節點詞值＋前驅詞值」去重；未覆寫節點另把同節點其餘高分單元圖（至多 K−1 個）派生為獨立狀態，近乎同分的同音字因此可由後方語境決定。回溯後最佳路徑上的節點改指所得元圖、其餘遍歷過的未覆寫節點退回首個單元圖。K=1 與舊 1-best 逐位元一致（測試內附參考實作比對）。隱藏偏好 `AssemblerBeamWidth`（預設 4、限 1…8），每次按鍵同步。效能：release 約 1.35–1.7 倍；debug 壓力測試約 4 倍。評測 K=1／K=4 皆 44/65 句、566/594 字，逐句結果相同。測試 `HomaTests_BeamSearch`。 |
+| Phase 5B 語氣詞＋標點元圖 | 完成 | `LXFacade_PunctuationContextGrams.swift`：`_punctuation_` 起首之單鍵（`_punctuation_list` 除外）依標點資料值（？！。，；：）注入「前文為語氣詞」雙元圖，分數＝標點單元圖＋1.0；兩條查詢路徑皆注入、經 LRU 快取。不入選字窗、不入帳本。須 K≥2 才能回頭影響前驅（IH751 記錄此依賴）。測試 `PunctuationContextGramTests`、IH750–752。注意：真實詞庫中「嗎」(−5.118) 本就略勝「媽」(−5.175)，K=1 已組出「你知道我在哪嗎？」；實際使用時的「哪媽？」應來自使用者資料（POM／帳本／使用者片語）使「媽」領先，本機制可翻轉 1.0 以內的差距。評測工具新增 `--beam-width`，TSV 可直接寫標點索引鍵。 |
 
 評測重跑（所有改動就位、POM 關閉）：44/65 句、566/594 字，與基線一致。
 
