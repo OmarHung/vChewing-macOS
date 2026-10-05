@@ -398,6 +398,8 @@
 "i18n:UserDef.kCandidateStateJKHLBehavior.option.1" = "JKで入力緩衝列のカーソルを移動；HLで現在の行・列を切り替え";
 "i18n:UserDef.kCandidateStateJKHLBehavior.option.2" = "HLで入力緩衝列のカーソルを移動；JKで現在の行・列を切り替え";
 "i18n:UserDef.kCandidateStateJKHLBehavior.shortTitle" = "候補陳列ウィンドウでのJKHLキーの動作:";
+"i18n:UserDef.kCandidateUsageLedgerEnabled.description" = "有効にすると、実際に確定した字詞の使用回数を端末内で長期的に記録し（使用頻度台帳）、よく使う候補を候補ウィンドウ内の同じ長さのグループで前方へ移動します。倚天 DOS 固定順序が有効な場合、単漢字候補は引き続きその順序を基準とし、漸退記憶の提案が優先されます。回数は約 180 日の半減期でゆっくり減衰します。入力アプリのメニューから漸退記憶を消去すると、使用頻度台帳も同時に消去されます。自動組句の結果には影響しません。";
+"i18n:UserDef.kCandidateUsageLedgerEnabled.shortTitle" = "よく使う候補を前に移動（使用頻度台帳）";
 "i18n:UserDef.kCandidateWindowShowOnlyOneLine.description" = "田所候補陳列ウィンドウは普段４つの行・列で文字候補を陳列しています。ただ、老眼の患者には、大きなる文字候補サイズが必要であり、複数の行・列の文字候補陳列ウィンドウのサイズも大きくなります。この場合、文字候補を１つ行・列だけにすれば、候補陳列ウィンドウのサイズを多少縮むことはできます。従って、このオプションを提供しました。ただ、注意点は２つ：１）縦書きの時には、このオプションは無視され、文字候補はずっと１つ行・列にされます；２）１つ行・列だけで文字候補を陳列する場合、候補陳列ウィンドウのサイズは不足で、表示できる逆引参照の結果は１つだけです。";
 "i18n:UserDef.kCandidateWindowShowOnlyOneLine.shortTitle" = "ただ１つ行・列で文字候補を陳列";
 "i18n:UserDef.kCassetteEnabled.description" = "カセットモードは、CIN ファイルを用いて、（五筆や倉頡や嘸蝦米などのような）筆画入力を機能拡張できるモードである。ですが、単なる予備機能として提供したもののため、使いやすいかどうか、RIME や OpenVanilla などに比べられないかもしれん。";

@@ -153,6 +153,7 @@
         Section {
           UserDef.kFetchSuggestionsFromPerceptionOverrideModel.renderUI()
           UserDef.kReducePOMLifetimeToNoMoreThan12Hours.renderUI()
+          UserDef.kCandidateUsageLedgerEnabled.renderUI()
         }
 
         Section {

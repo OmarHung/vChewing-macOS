@@ -116,6 +116,7 @@ public enum UserDef: String, CaseIterable, Identifiable, Sendable {
   case kEnforceETenDOSCandidateSequence = "enforceETenDOSCandidateSequence"
   case kRomanNumeralOutputFormat = "RomanNumeralOutputFormat"
   case kReducePOMLifetimeToNoMoreThan12Hours = "ReducePOMLifetimeToNoMoreThan12Hours"
+  case kCandidateUsageLedgerEnabled = "CandidateUsageLedgerEnabled"
 
   case kUseSpaceToCommitHighlightedCandidate4SCPC = "UseSpaceToCommitHighlightedCandidate4SCPC"
   case kEnableCandidateWindowAnimation = "EnableCandidateWindowAnimation"
@@ -724,6 +725,7 @@ extension UserDef {
     case .kEnforceETenDOSCandidateSequence: return .bool(true)
     case .kRomanNumeralOutputFormat: return .integer(0)
     case .kReducePOMLifetimeToNoMoreThan12Hours: return .bool(false)
+    case .kCandidateUsageLedgerEnabled: return .bool(true)
     case .kUseSpaceToCommitHighlightedCandidate4SCPC: return .bool(false)
     case .kEnableCandidateWindowAnimation: return .bool(true)
     case .kDisableSegmentedThickUnderlineInMarkingModeForManagedClients: return .bool(false)
@@ -1122,6 +1124,10 @@ extension UserDef {
     case .kReducePOMLifetimeToNoMoreThan12Hours: return .init(
         userDef: self, shortTitle: "i18n:UserDef.kReducePOMLifetimeToNoMoreThan12Hours.shortTitle",
         description: "i18n:UserDef.kReducePOMLifetimeToNoMoreThan12Hours.description"
+      )
+    case .kCandidateUsageLedgerEnabled: return .init(
+        userDef: self, shortTitle: "i18n:UserDef.kCandidateUsageLedgerEnabled.shortTitle",
+        description: "i18n:UserDef.kCandidateUsageLedgerEnabled.description"
       )
     case .kUseFixedCandidateOrderOnSelection: return .init(
         userDef: self, shortTitle: "i18n:UserDef.kUseFixedCandidateOrderOnSelection.shortTitle",

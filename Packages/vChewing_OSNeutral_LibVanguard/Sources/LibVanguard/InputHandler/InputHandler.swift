@@ -60,6 +60,7 @@ public final class InputHandler: InputHandlerProtocol {
   public var errorCallback: ((String) -> ())?
   public var notificationCallback: ((String) -> ())?
   public var pomSaveCallback: (() -> ())?
+  public var usageLedgerSaveCallback: (() -> ())?
   public var filterabilityChecker: ((_ state: IMEStateData) -> Bool)?
   public var markingTooltipGenerator: ((_ state: State) -> (tooltip: String, colorState: TooltipColorState))?
   public var narrator: (any SpeechNarratorProtocol)? = SessionHost.shared.narrator()

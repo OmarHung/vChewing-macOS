@@ -33,10 +33,12 @@ extension LXAssembly {
     // 這句需要留著，不然無法被 package 外界存取。
     public init(
       isCHS: Bool = false,
-      pomDataURL: URL? = nil
+      pomDataURL: URL? = nil,
+      usageLedgerDataURL: URL? = nil
     ) {
       self.isCHS = isCHS
       self.lxPerceptor = LXPerceptor(dataURL: pomDataURL)
+      self.lxUsageLedger = LXUsageLedger(dataURL: usageLedgerDataURL)
     }
 
     // MARK: Public
@@ -334,6 +336,9 @@ extension LXAssembly {
       config.allowRescoringSingleKanjiCandidates = prefs.allowRescoringSingleKanjiCandidates
       config.alwaysSupplyETenDOSUnigrams = prefs.enforceETenDOSCandidateSequence || prefs.useSCPCTypingMode
       config.fetchSuggestionsFromPerceptionOverrideModel = prefs.fetchSuggestionsFromPerceptionOverrideModel
+      // 使用頻次帳本開關刻意不放進 `config`：`config` 會被併入檢索快取指紋，而帳本目前不參與
+      // `unigramsFor`，切換此開關不應令檢索快取失效。
+      isUsageLedgerEnabled = prefs.candidateUsageLedgerEnabled
       config.bypassUserPhrasesData = prefs.userPhrasesDatabaseBypassed
       config.suppressFactoryUnigramsOfKanaSyllables = prefs.suppressFactoryUnigramsOfKanaSyllables
       // 注音文抑制：語意為「**狂打確實生效中**」。四個維度：
@@ -733,6 +738,13 @@ extension LXAssembly {
 
     /// 漸退記憶模組。全體已回歸 MainActor，故直接以 stored property 承載。
     var lxPerceptor: LXPerceptor
+
+    /// 使用頻次帳本（長期統計實際遞交過的字詞）。目前僅供候選窗排序使用，不參與 `unigramsFor`。
+    let lxUsageLedger: LXUsageLedger
+
+    /// 是否啟用使用頻次帳本（鏡像 `kCandidateUsageLedgerEnabled`，由 `syncPrefs()` 寫入）。
+    /// 停用時不記錄、亦不提供排序資料。
+    var isUsageLedgerEnabled = true
 
     // MARK: - 核心函式（對外）
 

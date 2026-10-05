@@ -31,6 +31,8 @@ public protocol InputHandlerProtocol: AnyObject {
   var errorCallback: ((String) -> ())? { get set }
   var notificationCallback: ((String) -> ())? { get set }
   var pomSaveCallback: (() -> ())? { get set }
+  /// 使用頻次帳本的存檔回呼（供宿主做防抖存檔）；為 `nil` 時帳本會直接寫入其預設位置。
+  var usageLedgerSaveCallback: (() -> ())? { get set }
   var filterabilityChecker: ((_ state: IMEStateData) -> Bool)? { get set }
   var markingTooltipGenerator: ((_ state: State) -> (tooltip: String, colorState: TooltipColorState))? { get set }
   var isJISKeyboard: (() -> Bool)? { get set }
@@ -840,6 +842,12 @@ extension InputHandlerProtocol {
       }
     }
 
+    // 使用頻次帳本：在 POM 置頂與倚天固定序（基底順序）之後，於同詞長群組內把常用候選往前移。
+    // 「固定順序」與逐字選字模式維持既有行為，不做前移。
+    if !fixOrder, !prefs.useSCPCTypingMode, isUsageLedgerInEffect {
+      arrCandidates = promoteCandidatesByUsage(arrCandidates, pinned: learnedPromotions)
+    }
+
     return arrCandidates.map { ($0.keyArray, $0.value) }
   }
 
@@ -1227,6 +1235,8 @@ extension InputHandlerProtocol {
     invalidateFuriousTrail() // 溢出遞交涉及組字器結構變更：狂拼 trail 失效。
     // 回頭在這裡插上對 Steam 的 Client Identifier 的要求。
     var textToCommit = ""
+    /// 整個節點都被溢出遞交者，記入使用頻次帳本（只遞交了一部分的節點不記）。
+    var fullyCommittedNodes: [Homa.GramInPath] = []
     while assembler.length > compositorWidthLimit {
       var delta = assembler.length - compositorWidthLimit
       let node = assembler.assembledSentence[0]
@@ -1236,6 +1246,7 @@ extension InputHandlerProtocol {
       } else {
         delta = min(delta, node.keyArray.count)
         textToCommit += node.asCandidatePair.value.map(\.description)[0 ..< delta].joined()
+        if delta == node.keyArray.count { fullyCommittedNodes.append(node) }
       }
       let newCursor = max(assembler.cursor - delta, 0)
       assembler.cursor = 0
@@ -1244,6 +1255,7 @@ extension InputHandlerProtocol {
       for _ in 0 ..< delta { try? assembler.dropKey(direction: .front) }
       assembler.cursor = newCursor
     }
+    recordUsageLedger(pairs: usageLedgerPairs(from: fullyCommittedNodes))
     return textToCommit
   }
 }

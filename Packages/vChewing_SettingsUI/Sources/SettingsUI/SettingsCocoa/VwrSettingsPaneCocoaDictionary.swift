@@ -127,6 +127,10 @@ extension SettingsPanesCocoa {
             fixWidth: contentWidth,
             prefUITab: .tabDictionary
           )
+          UserDef.kCandidateUsageLedgerEnabled.renderCocoa(
+            fixWidth: contentWidth,
+            prefUITab: .tabDictionary
+          )
         }?.boxed()
         NSStackView.buildSection(width: contentWidth) {
           NSStackView.build(.vertical) {

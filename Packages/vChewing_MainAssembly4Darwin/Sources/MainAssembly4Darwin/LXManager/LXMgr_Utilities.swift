@@ -104,6 +104,24 @@ extension LXMgr {
     ).deletingLastPathComponent().appendingPathComponent(fileName)
   }
 
+  /// 使用頻次帳本資料與漸退記憶模組資料同屬「高頻存取的打字統計」，故比照後者放在預設的使用者資料目錄的上一層
+  /// （「~/Library/Application Support/vChewing/」），不隨使用者片語辭典目錄的改變而改變。
+  /// - Parameter mode: 簡繁體輸入模式。
+  /// - Returns: 資料路徑（URL）。
+  public static func usageLedgerDataURL(_ mode: Shared.InputMode) -> URL {
+    let fileName: String = {
+      switch mode {
+      case .imeModeCHS: return "vChewing_usage-ledger-chs.dat"
+      case .imeModeCHT: return "vChewing_usage-ledger-cht.dat"
+      case .imeModeNULL: return "vChewing_usage-ledger-dummy.dat"
+      }
+    }()
+
+    return URL(
+      fileURLWithPath: dataFolderPath(isDefaultFolder: true)
+    ).deletingLastPathComponent().appendingPathComponent(fileName)
+  }
+
   // MARK: - 使用者片語檔案專用目錄的合規性檢查
 
   /// 判斷「指定的使用者資料目錄」是否實質等同於「未指定」。

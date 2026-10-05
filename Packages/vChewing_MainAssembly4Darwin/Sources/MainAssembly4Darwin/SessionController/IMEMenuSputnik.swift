@@ -448,6 +448,9 @@ extension IMEMenuSputnik {
           register {
             LXMgr.clearPerceptionOverrideModelData(IMEApp.currentInputMode)
             LXMgr.clearPerceptionOverrideModelData(IMEApp.currentInputMode.reversed)
+            // 使用頻次帳本與漸退記憶同屬「打字習慣統計」，使用者清除記憶時一併清除。
+            LXMgr.clearUsageLedgerData(IMEApp.currentInputMode)
+            LXMgr.clearUsageLedgerData(IMEApp.currentInputMode.reversed)
           }
         )
         .alternated()

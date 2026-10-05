@@ -1,5 +1,5 @@
 {
-  "count" : 119,
+  "count" : 120,
   "entries" : [
     {
       "default" : false,
@@ -3864,6 +3864,38 @@
       "optionsKind" : null,
       "range" : null,
       "rawValue" : "ReducePOMLifetimeToNoMoreThan12Hours",
+      "type" : "bool"
+    },
+    {
+      "default" : true,
+      "defaultsType" : "bool",
+      "exchangeBlacklisted" : false,
+      "key" : "kCandidateUsageLedgerEnabled",
+      "labels" : {
+        "en" : {
+          "description" : "When enabled, the input method keeps a long-term, on-device tally of the words and characters you actually commit (the usage ledger), and moves frequently used candidates toward the front of their same-length group in the candidate window. Single characters still use the ETen DOS sequence as their base order when that option is on, and suggestions from the perception override memory keep their priority. Counts fade slowly with a half-life of about 180 days. Clearing the perception override memory from the input method menu also clears the usage ledger. This does not affect automatic sentence composition.",
+          "shortTitle" : "Promote frequently used candidates (usage ledger)"
+        },
+        "ja" : {
+          "description" : "有効にすると、実際に確定した字詞の使用回数を端末内で長期的に記録し（使用頻度台帳）、よく使う候補を候補ウィンドウ内の同じ長さのグループで前方へ移動します。倚天 DOS 固定順序が有効な場合、単漢字候補は引き続きその順序を基準とし、漸退記憶の提案が優先されます。回数は約 180 日の半減期でゆっくり減衰します。入力アプリのメニューから漸退記憶を消去すると、使用頻度台帳も同時に消去されます。自動組句の結果には影響しません。",
+          "shortTitle" : "よく使う候補を前に移動（使用頻度台帳）"
+        },
+        "zh-Hans" : {
+          "description" : "启用后，输入法会在本机长期统计您实际递交的字词（使用频次账本），并将常用的候选在候选窗内的同词长群组中往前移。启用倚天 DOS 固定序时，单字候选仍以其为基底顺序；渐退记忆的建议维持优先。计数会以约 180 天的半衰期缓慢衰减。从输入法菜单清除渐退记忆时，亦会一并清除使用频次账本。本功能不影响自动组句结果。",
+          "shortTitle" : "依使用频次前移常用候选（使用频次账本）"
+        },
+        "zh-Hant" : {
+          "description" : "啟用後，輸入法會在本機長期統計您實際遞交的字詞（使用頻次帳本），並將常用的候選在候選窗內的同詞長群組中往前移。啟用倚天 DOS 固定序時，單字候選仍以其為基底順序；漸退記憶的建議維持優先。計數會以約 180 天的半衰期緩慢衰減。從輸入法選單清除漸退記憶時，亦會一併清除使用頻次帳本。本功能不影響自動組句結果。",
+          "shortTitle" : "依使用頻次前移常用候選（使用頻次帳本）"
+        }
+      },
+      "metadataPending" : false,
+      "metadataPendingReason" : "none",
+      "minimumOS" : 10.9,
+      "options" : null,
+      "optionsKind" : null,
+      "range" : null,
+      "rawValue" : "CandidateUsageLedgerEnabled",
       "type" : "bool"
     },
     {

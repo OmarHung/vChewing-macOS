@@ -41,6 +41,8 @@ public final class SessionHost {
   public var isStateDataFilterableForMarked: (_ state: IMEStateData) -> Bool = { _ in false }
   /// 儲存感知模型資料。
   public var savePerceptionOverrideModelData: () -> () = {}
+  /// 儲存使用頻次帳本資料（宿主應做防抖處理）。
+  public var saveUsageLedgerData: () -> () = {}
   /// 直接寫入使用者語彙。
   public var writeUserPhrasesAtOnce: (_ phrase: UserPhraseInsertable, _ areWeFiltering: Bool) -> Bool =
     { _, _ in false }
@@ -120,6 +122,8 @@ public final class SessionHost {
 
   /// 取得指定模式下的感知模型（POM）資料路徑。
   public var pomDataURL: (Shared.InputMode) -> URL? = { _ in nil }
+  /// 取得指定模式下的使用頻次帳本資料路徑。
+  public var usageLedgerDataURL: (Shared.InputMode) -> URL? = { _ in nil }
   /// 候選字鍵驗證。
   public var validateCandidateKeys: (_ prefs: any PrefMgrProtocol, _ keys: String) -> String? =
     { _, _ in nil }
@@ -151,11 +155,13 @@ extension Shared.InputMode {
     init() {
       self.chs = LXAssembly.LXFacade(
         isCHS: true,
-        pomDataURL: SessionHost.shared.pomDataURL(.imeModeCHS)
+        pomDataURL: SessionHost.shared.pomDataURL(.imeModeCHS),
+        usageLedgerDataURL: SessionHost.shared.usageLedgerDataURL(.imeModeCHS)
       )
       self.cht = LXAssembly.LXFacade(
         isCHS: false,
-        pomDataURL: SessionHost.shared.pomDataURL(.imeModeCHT)
+        pomDataURL: SessionHost.shared.pomDataURL(.imeModeCHT),
+        usageLedgerDataURL: SessionHost.shared.usageLedgerDataURL(.imeModeCHT)
       )
     }
 

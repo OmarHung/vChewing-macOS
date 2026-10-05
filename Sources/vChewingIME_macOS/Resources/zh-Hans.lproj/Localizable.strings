@@ -398,6 +398,8 @@
 "i18n:UserDef.kCandidateStateJKHLBehavior.option.1" = "JK 移动组字区游标；HL 翻选字窗行列";
 "i18n:UserDef.kCandidateStateJKHLBehavior.option.2" = "HL 移动组字区游标；JK 翻选字窗行列";
 "i18n:UserDef.kCandidateStateJKHLBehavior.shortTitle" = "选字窗内的 JKHL 键行为:";
+"i18n:UserDef.kCandidateUsageLedgerEnabled.description" = "启用后，输入法会在本机长期统计您实际递交的字词（使用频次账本），并将常用的候选在候选窗内的同词长群组中往前移。启用倚天 DOS 固定序时，单字候选仍以其为基底顺序；渐退记忆的建议维持优先。计数会以约 180 天的半衰期缓慢衰减。从输入法菜单清除渐退记忆时，亦会一并清除使用频次账本。本功能不影响自动组句结果。";
+"i18n:UserDef.kCandidateUsageLedgerEnabled.shortTitle" = "依使用频次前移常用候选（使用频次账本）";
 "i18n:UserDef.kCandidateWindowShowOnlyOneLine.description" = "田所选字窗在预设情况下会显示四列/四行候选字，提供类似于 macOS 内建中文输入法（macOS 10.9 起算）以及微软新注音输入法那样的选字窗排版体验。然而，部分使用者受老花眼所困扰，需要以较大字号来显示候选字。这种情况下，多行/多列的选字窗可能会占用过多的荧幕空间，也就需要这么一个选项来停用这个特性。需注意：如果当前文字输入环境是纵排输入的话，田所选字窗会始终使用单列/单行来显示候选字、而无视该选项。因为单行/单列选字窗的面积不够，所以最多只会显示一笔字根反查结果。";
 "i18n:UserDef.kCandidateWindowShowOnlyOneLine.shortTitle" = "仅以单行/单列来陈列候选字";
 "i18n:UserDef.kCassetteEnabled.description" = "磁带模式类似于雅虎奇摩输入法的 CIN 支援模式，允许使用者借由 CIN 表格档案扩充自己想要的笔画输入法（比如五笔、仓颉、呒虾米，等）。然而，因为唯音不打算为了这个功能而牺牲注音输入的体验，所以这个磁带模式的体验对于已经习惯 RIME 或者 OpenVanilla 的人群而言可能会稍微麻烦一些。";

@@ -148,6 +148,7 @@ public final class LXMgr {
         mode.lexicon.loadUserSymbolData(path: userDictDataURL(mode: mode, type: .theSymbols).path)
         mode.lexicon.pomReducedLifetime = PrefMgr.shared.reducePOMLifetimeToNoMoreThan12Hours
         mode.lexicon.loadPOMData()
+        mode.lexicon.loadUsageLedger()
       }
 
       if PrefMgr.shared.associatedPhrasesEnabled { Self.loadUserAssociatesData() }
@@ -326,6 +327,16 @@ public final class LXMgr {
     mode.lexicon.clearPOMData()
   }
 
+  // MARK: Usage Ledger
+
+  public static func saveUsageLedgerData(_ saveAllModes: Bool = true) {
+    usageLedgerSavingCoordinator.savePerceptionOverrideModelData(saveAllModes: saveAllModes)
+  }
+
+  public static func clearUsageLedgerData(_ mode: Shared.InputMode = .imeModeNULL) {
+    mode.lexicon.clearUsageLedger()
+  }
+
   /// 清理語言模型記憶體，防止記憶體洩漏
   public static func performMemoryCleanup() {
     Shared.InputMode.validCases.forEach { mode in
@@ -389,6 +400,13 @@ public final class LXMgr {
   // Debouncer for POM saves (keep compatible with 10.9)
   private static let pomSavingCoordinator = POMSavingCoordinator(
     queueName: "LXAssembly_POM", pomDebounceInterval: 2.0
+  )
+
+  // Debouncer for usage-ledger saves: same machinery as POM, different save action.
+  // 帳本的時效性遠低於 POM，故防抖間隔放寬，以減少逐次遞交造成的整檔快照改寫。
+  private static let usageLedgerSavingCoordinator = POMSavingCoordinator(
+    queueName: "LXAssembly_UsageLedger", pomDebounceInterval: 5.0,
+    saveAction: { $0.saveUsageLedger() }
   )
 
   private static var unitTestRootURL: URL?
@@ -488,17 +506,22 @@ extension LXMgr {
   private final class POMSavingCoordinator {
     // MARK: Lifecycle
 
+    /// - Parameter saveAction: 實際的落盤動作（預設為 POM 存檔；使用頻次帳本亦共用本防抖機制）。
     init(
       queueName: String,
-      pomDebounceInterval: TimeInterval = 2.0
+      pomDebounceInterval: TimeInterval = 2.0,
+      saveAction: @escaping SaveAction = { $0.savePOMData() }
     ) {
       self.pomDebounceQueue = DispatchQueue(label: queueName)
       self.pomDebounceInterval = pomDebounceInterval
+      self.saveAction = saveAction
       self.pomPendingSave4AllModes = false
       self.pomDebounceToken = 0
     }
 
     // MARK: Internal
+
+    typealias SaveAction = @MainActor @Sendable (LXAssembly.LXFacade) -> ()
 
     func savePerceptionOverrideModelData(
       saveAllModes: Bool = true
@@ -510,6 +533,7 @@ extension LXMgr {
     // MARK: Private
 
     private let pomDebounceQueue: DispatchQueue
+    private let saveAction: SaveAction
     private let pomDebounceInterval: TimeInterval
     private var pomPendingSave4AllModes: Bool
     private var pomDebounceToken: UInt64
@@ -531,7 +555,7 @@ extension LXMgr {
         }
         c.pomDebounceQueue.asyncAfter(deadline: .now() + interval) { [weak c] in
           // Read coordinator state and UI state on the main thread (no I/O here).
-          let targetLexicons: [LXAssembly.LXFacade] = mainSync {
+          let targetLexicons: [(LXAssembly.LXFacade, SaveAction)] = mainSync {
             guard let coordinator = c else { return [] }
             guard coordinator.pomDebounceToken == scheduledToken else { return [] }
             let shouldSaveAll = coordinator.pomPendingSave4AllModes
@@ -547,13 +571,13 @@ extension LXMgr {
             AppDelegate.shared.suppressUserDataMonitor(
               for: Swift.max(0.8, coordinator.pomDebounceInterval + 0.2)
             )
-            return targetModes.map(\.lexicon)
+            return targetModes.map { ($0.lexicon, coordinator.saveAction) }
           }
           // POM 落盤改在主執行緒執行（非主執行緒只負責調度）：磁碟 I/O 因此不再有第二條執行緒
           // 與主執行緒互搶 POM 的鎖；本佇列僅負責 debounce 計時。
           asyncOnMain {
-            targetLexicons.forEach {
-              $0.savePOMData()
+            targetLexicons.forEach { lexicon, saveAction in
+              saveAction(lexicon)
             }
           }
         }

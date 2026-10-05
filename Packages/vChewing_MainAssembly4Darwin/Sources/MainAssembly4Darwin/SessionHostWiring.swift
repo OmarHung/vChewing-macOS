@@ -23,6 +23,7 @@ extension SessionHost {
     host.flushTrieCaches = { LXMgr.flushTrieCaches() }
     host.isStateDataFilterableForMarked = { LXMgr.isStateDataFilterableForMarked($0) }
     host.savePerceptionOverrideModelData = { LXMgr.savePerceptionOverrideModelData(false) }
+    host.saveUsageLedgerData = { LXMgr.saveUsageLedgerData(false) }
     host.writeUserPhrasesAtOnce = { LXMgr.writeUserPhrasesAtOnce($0, areWeFiltering: $1) }
     host.bleachSpecifiedSuggestions = { targets, headReadings, mode in
       if let headReadings, !headReadings.isEmpty {
@@ -79,6 +80,7 @@ extension SessionHost {
     host.prefs = { PrefMgr.shared }
     // Lexicon 動作依賴。
     host.pomDataURL = { LXMgr.perceptionOverrideModelDataURL($0) }
+    host.usageLedgerDataURL = { LXMgr.usageLedgerDataURL($0) }
     host.validateCandidateKeys = { prefs, keys in
       prefs.validate(candidateKeys: keys)
     }

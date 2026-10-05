@@ -231,6 +231,7 @@ public final class InputSession: SessionProtocol, Sendable {
       inputHandler.filterabilityChecker = SessionHost.shared.isStateDataFilterableForMarked
       inputHandler.notificationCallback = SessionHost.shared.notify
       inputHandler.pomSaveCallback = { SessionHost.shared.savePerceptionOverrideModelData() }
+      inputHandler.usageLedgerSaveCallback = { SessionHost.shared.saveUsageLedgerData() }
       inputHandler.assembler.maxSegLength = prefs.maxCandidateLength
       inputHandler.ensureKeyboardParser()
     } else {
@@ -242,6 +243,7 @@ public final class InputSession: SessionProtocol, Sendable {
         notificationCallback: SessionHost.shared.notify,
         pomSaveCallback: { SessionHost.shared.savePerceptionOverrideModelData() }
       )
+      inputHandler?.usageLedgerSaveCallback = { SessionHost.shared.saveUsageLedgerData() }
     }
     inputHandler?.markingTooltipGenerator = { state in
       let result = IMEStateParsed(state).generateTooltipForMarking()

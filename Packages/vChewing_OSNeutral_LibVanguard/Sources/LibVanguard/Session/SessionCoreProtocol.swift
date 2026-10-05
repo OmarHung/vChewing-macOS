@@ -91,12 +91,15 @@ extension SessionCoreProtocol {
     switch next.type {
     case .ofDeactivated: break // macOS 不再處理 deactivated 狀態。
     case .ofAbortion, .ofCommitting, .ofEmpty:
+      // 使用頻次帳本與最近遞交帳本皆須在 `clear()` 清空組字器之前記錄（本處為所有遞交路徑的匯流點）。
       if next.type == .ofCommitting {
+        inputHandler?.recordUsageLedgerOnCommit(committedText: next.textToCommit)
         commit(text: next.textToCommit)
       } else if next.type == .ofEmpty, previous.hasComposition, let inputHandler {
         let textToCommit = inputHandler.committableDisplayText(
           sansReading: previous.type != .ofInputting
         )
+        inputHandler.recordUsageLedgerOnCommit(committedText: textToCommit)
         commit(text: textToCommit)
       }
       inputHandler?.clear()
