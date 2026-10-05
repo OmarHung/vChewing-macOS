@@ -185,7 +185,8 @@ extension Homa.Node {
   public var value: String? { currentGram?.current }
 
   /// 給出目前的最高權重單元圖當中的權重值。該結果可能會受節點覆寫狀態所影響。
-  private var unigramScore: Double {
+  /// - Parameter rareFloor: 零頻兜底詞的長度縮放規則（可選），僅作用於單元圖分數。
+  private func unigramScore(rareFloor: Homa.RarePhraseFloor?) -> Double {
     guard !grams.isEmpty else { return 0 }
     // 單次線性掃描、只取陣列順序上的第一個單元圖機率，不建立任何一次性 filter 陣列。
     var firstUnigramProbability: Double?
@@ -197,16 +198,16 @@ extension Homa.Node {
     guard let firstUnigramProbability else { return 0 }
     switch currentOverrideType {
     case .withSpecified: return overridingScore
-    case .withTopGramScore: return firstUnigramProbability
+    case .withTopGramScore: return rareFloor.applied(to: firstUnigramProbability)
     default:
       // 無覆寫狀態時以當前選取之元圖計分；惟當前選取若為**帶語境之元圖**（雙元圖／三元圖），
       // 則語境無從確認（本路徑正是「無前述內容」之情形）⇒ 退回單元圖基線，避免該語境分數
       // 在無語境處生效。該狀態僅可能出自 `getScore(previous:anterior:)` 之自動語境選取
       // （見 `adoptGramForContext(keyArray:value:previous:anterior:)`）。
       if let currentGram, (currentGram.previous ?? "").isEmpty, (currentGram.anterior ?? "").isEmpty {
-        return currentGram.probability
+        return rareFloor.applied(to: currentGram.probability)
       }
-      return firstUnigramProbability
+      return rareFloor.applied(to: firstUnigramProbability)
     }
   }
 
@@ -217,10 +218,18 @@ extension Homa.Node {
   /// - Parameters:
   ///   - previous: 前述節點內容，用以查詢可能的雙元圖資料。
   ///   - anterior: 前述節點再往前一格的內容，用以查詢可能的三元圖資料（可選）。
+  ///   - rareFloor: 零頻兜底詞的長度縮放規則（可選）。僅作用於**單元圖**分數（含與語境
+  ///     元圖比較時所用的單元圖基線）；語境元圖（雙元圖／三元圖，例如 POM 記憶注入者）
+  ///     與 `.withSpecified` 覆寫分數一律原樣回傳。詳見 `Homa.RarePhraseFloor`。
   /// - Returns: 權重。
-  internal mutating func getScore(previous: String?, anterior: String? = nil) -> Double {
+  internal mutating func getScore(
+    previous: String?,
+    anterior: String? = nil,
+    rareFloor: Homa.RarePhraseFloor? = nil
+  )
+    -> Double {
     guard !grams.isEmpty else { return 0 }
-    guard let previous, !previous.isEmpty else { return unigramScore }
+    guard let previous, !previous.isEmpty else { return unigramScore(rareFloor: rareFloor) }
 
     // 單次線性掃描元圖陣列：同步捕捉「陣列順序上的首個單元圖機率」、「前述內容相符的
     // 最高權重雙元圖」與「前驅二位相符的最高權重三元圖」。匹配不與 currentGram 綁定
@@ -258,7 +267,9 @@ extension Homa.Node {
     if let bestBigram, bestBonus == nil || bestBigram.probability > (bestBonus?.probability ?? 0) {
       bestBonus = bestBigram
     }
-    let unigramBaseline = firstUnigramProbability ?? 0
+    // 單元圖基線先經零頻兜底詞的長度縮放（若有）：語境加分是否勝出，應以該節點在 DP 中
+    // 實際會拿到的單元圖分數為比較基準。語境元圖本身的機率則不受縮放。
+    let unigramBaseline = firstUnigramProbability.map { rareFloor.applied(to: $0) } ?? 0
     switch currentOverrideType {
     case .withSpecified:
       return overridingScore
@@ -372,6 +383,46 @@ extension Homa.Node {
       return gram
     }
     throw Homa.Exception.nothingOverriddenAtNode
+  }
+}
+
+// MARK: - Homa.RarePhraseFloor
+
+extension Homa {
+  /// 零頻兜底詞在組句評分時的長度縮放規則。
+  ///
+  /// 詞庫給零頻詞條的兜底分數是固定值、不隨音節數縮放，於是一個從未出現過的長詞與一個
+  /// 從未出現過的短詞領到相同分數。DP 累加對數機率、節點越少總分越高，這類長的零頻詞
+  /// 便會系統性地擊敗逐字組合。本規則為其補上長度縮放：要求一個零頻的 n 音節詞至少付出
+  /// n 個中等常用字的代價。單音節元圖不受影響。
+  ///
+  /// - Remark: 僅供節點的**單元圖**計分使用（見 `Homa.Node.getScore(previous:anterior:rareFloor:)`）。
+  /// 語境元圖（雙元圖／三元圖）是「該語境下確有用例」的證據，不屬於零頻兜底詞；
+  /// 使用者明確覆寫的分數亦不應被改寫。參數意涵詳見 `Homa.Assembler.rarityThreshold`
+  /// 與 `Homa.Assembler.rarePhrasePerSyllableFloor`。
+  struct RarePhraseFloor {
+    /// 判定為零頻兜底詞的分數門檻（分數不高於此值者受縮放約束）。
+    let rarityThreshold: Double
+    /// 每個音節應付出的代價。
+    let perSyllableFloor: Double
+    /// 節點在軌格中的幅節長度（音節數）。
+    let segLength: Int
+
+    /// 對給定的單元圖分數套用長度縮放。
+    func apply(to score: Double) -> Double {
+      guard segLength > 1, score <= rarityThreshold else { return score }
+      return Swift.min(score, perSyllableFloor * Double(segLength))
+    }
+  }
+}
+
+extension Optional where Wrapped == Homa.RarePhraseFloor {
+  /// 規則存在時套用之，否則原樣回傳。
+  func applied(to score: Double) -> Double {
+    switch self {
+    case let .some(rule): return rule.apply(to: score)
+    case .none: return score
+    }
   }
 }
 

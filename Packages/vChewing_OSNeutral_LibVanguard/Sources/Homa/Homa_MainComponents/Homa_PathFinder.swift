@@ -12,7 +12,12 @@ extension Homa.Assembler {
   @discardableResult
   public func assemble() -> [Homa.GramInPath] {
     var finalScore = Double(Int32.min)
-    let result = Homa.PathFinder.run(config: &config, finalScore: &finalScore)
+    let result = Homa.PathFinder.run(
+      config: &config,
+      rarityThreshold: rarityThreshold,
+      rarePhrasePerSyllableFloor: rarePhrasePerSyllableFloor,
+      finalScore: &finalScore
+    )
     mostRecentPathScore = finalScore
     assembledSentence = result
     return assembledSentence
@@ -32,10 +37,19 @@ extension Homa {
     /// - Parameters:
     ///   - config: 組字器組態（inout，因為 DP 遍歷時 `getScore(previous:)` 的自動覆寫
     ///     副作用需要就地寫回節點狀態——節點為 Struct，無法再靠引用穿透值拷貝）。
+    ///   - rarityThreshold: 零頻兜底詞的分數門檻，詳見 `Homa.Assembler.rarityThreshold`。
+    ///   - rarePhrasePerSyllableFloor: 零頻兜底詞每音節的代價（`nil` 表示停用），詳見
+    ///     `Homa.Assembler.rarePhrasePerSyllableFloor`。
     ///   - finalScore: 寫出本次 DP 的整句最佳路徑總分（不可達時為 `Double(Int32.min)`）。
     /// - Returns: 組句結果（已選字詞陣列）。
     @discardableResult
-    static func run(config: inout Homa.Config, finalScore: inout Double) -> [Homa.GramInPath] {
+    static func run(
+      config: inout Homa.Config,
+      rarityThreshold: Double = -.infinity,
+      rarePhrasePerSyllableFloor: Double? = nil,
+      finalScore: inout Double
+    )
+      -> [Homa.GramInPath] {
       var newAssembledSentence = [Homa.GramInPath]()
       guard !config.segments.isEmpty else {
         finalScore = Double(Int32.min)
@@ -80,8 +94,21 @@ extension Homa {
             guard previousStart >= 0 else { return "" }
             return parent[previousStart]?.gram?.current ?? ""
           }()
+          // 詞庫給零頻詞條的兜底分數是固定值、不隨音節數縮放，於是一個從未出現過的長詞
+          // 與一個從未出現過的短詞領到相同分數。DP 累加對數機率、節點越少總分越高，這類
+          // 長的零頻詞便會系統性地擊敗逐字組合。此處為其補上長度縮放：要求一個零頻的 n
+          // 音節詞至少付出 n 個中等常用字的代價。單音節元圖不受影響。
+          // 縮放只作用於節點的單元圖分數（於 `getScore` 內套用）：語境元圖（POM 記憶等）
+          // 與使用者明確覆寫的分數不在此列。幅節長度以段字典鍵為準（理由同下方回溯）。
+          let rareFloor = rarePhrasePerSyllableFloor.map {
+            Homa.RarePhraseFloor(
+              rarityThreshold: rarityThreshold, perSyllableFloor: $0, segLength: length
+            )
+          }
           var nodeCopy = nextNode
-          let newScore = dp[i] + nodeCopy.getScore(previous: previousCurrent, anterior: anteriorCurrent)
+          let newScore = dp[i] + nodeCopy.getScore(
+            previous: previousCurrent, anterior: anteriorCurrent, rareFloor: rareFloor
+          )
           visitedNodes.append((i, length, nodeCopy))
 
           // 如果找到更好的路徑，更新 dp 和 parent

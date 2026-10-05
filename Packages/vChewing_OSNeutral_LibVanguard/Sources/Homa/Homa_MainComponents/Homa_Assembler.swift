@@ -15,17 +15,24 @@ extension Homa {
     /// 建立組字引擎處理器副本。
     /// - Parameters:
     ///   - gramQuerier: 單元圖資料存取專用介面。
+    ///   - rarityThreshold: 零頻兜底詞的分數門檻，詳見 `rarityThreshold`。
+    ///   - rarePhrasePerSyllableFloor: 零頻兜底詞每音節的代價，詳見 `rarePhrasePerSyllableFloor`。
     ///   - config: 引擎配置參數。
     public init(
       gramQuerier: @escaping Homa.GramQuerier,
       gramAvailabilityChecker: Homa.GramAvailabilityChecker? = nil,
       perceptor: Homa.BehaviorPerceptor? = nil,
+      rarityThreshold: Double = Homa.Assembler.defaultRarityThreshold,
+      rarePhrasePerSyllableFloor: Double? = Homa.Assembler
+        .defaultRarePhrasePerSyllableFloor,
       config: Config = Config()
     ) {
       self.gramQuerier = gramQuerier
       self.gramAvailabilityChecker = gramAvailabilityChecker
       self.config = config
       self.perceptor = perceptor
+      self.rarityThreshold = rarityThreshold
+      self.rarePhrasePerSyllableFloor = rarePhrasePerSyllableFloor
       self.gramQueryCache = [:]
       self.gramQueryCacheOrder = []
     }
@@ -38,6 +45,8 @@ extension Homa {
       self.gramQuerier = target.gramQuerier
       self.gramAvailabilityChecker = target.gramAvailabilityChecker
       self.perceptor = target.perceptor
+      self.rarityThreshold = target.rarityThreshold
+      self.rarePhrasePerSyllableFloor = target.rarePhrasePerSyllableFloor
       self.gramQueryCache = target.gramQueryCache
       self.gramQueryCacheOrder = target.gramQueryCacheOrder
       self.mostRecentPathScore = target.mostRecentPathScore
@@ -58,6 +67,38 @@ extension Homa {
       case refreshExisting
     }
 
+    /// 判定一筆元圖為「零頻兜底詞」的分數門檻之預設值。詳見 `rarityThreshold`。
+    ///
+    /// - Remark: 該數值依原廠詞庫的分數分佈校準而得。該詞庫的分數存在一個地板：最低的
+    /// 一批詞條全部聚集在 -9.32，且第 1 至第 10 百分位清一色是這個值——那正是詞典有收、
+    /// 但語料中不曾出現（頻次為零）的詞條所領到的兜底分數。`-9.2` 恰好切在這批地板值
+    /// 之上，精準涵蓋約一成三的候選，而不誤傷任何正常詞：雙音節的「一縷」（-8.496）與
+    /// 三音節的「水果汁」（-6.961）都仍有 0.7 以上的餘裕。
+    public static let defaultRarityThreshold: Double = -9.2
+
+    /// 零頻兜底詞在組句評分時、每個音節所應付出之代價的預設值：`nil`，亦即**預設停用**。
+    /// 詳見 `rarePhrasePerSyllableFloor`。
+    ///
+    /// - Remark: 停用的理由見 `suggestedRarePhrasePerSyllableFloor` 的實測結果。預設停用
+    /// 時，`assemble()` 的組句結果與引入本機制之前完全一致；選字窗的零頻詞沉底
+    /// （`rarityThreshold`）則不受影響、維持啟用。
+    public static let defaultRarePhrasePerSyllableFloor: Double? = nil
+
+    /// 零頻兜底詞每音節代價的校準建議值（`-6.0`），供呼叫端自行選用（opt-in）。
+    ///
+    /// - Remark: 該數值的原始推導：兩個「中等常用度」的單字，其分數和約在 -10.9 至 -11.9
+    /// 之間；取 `-6.0` 使雙音節零頻詞得到 -12.0，恰能讓這批逐字組合勝出，而當逐字組合本身
+    /// 更不可信時（例如兩字皆為罕用字），零頻詞仍會被選中。
+    ///
+    /// 然而以原廠詞庫進行離線評測時，此值反而讓種子句集的整句正確數由 44/65 降為 43/65，
+    /// 且無任何一句因此改善：「很像」被拆成「很／向」、「試過」被拆成「是／過」。根因在於
+    /// 原廠詞庫裡每個讀音的首選單字幾乎都落在 -5.0 至 -5.3 之間（很 -5.062、向 -5.076、
+    /// 是 -5.009、過 -5.079、心 -5.117、的 -4.976），任兩個首選單字相加約為 -10.1 至
+    /// -10.4——未縮放時，-9.32 的雙音節零頻詞恆勝；縮放至 -12.0 後則恆敗。換言之，此機制
+    /// 無從分辨「好的零頻複合詞」（很像、試過）與「壞的零頻詞」（使用者想打「你再」時的
+    /// 「你在」），在這份資料上只是一把鈍器，故不作為預設值。
+    public static let suggestedRarePhrasePerSyllableFloor: Double = -6.0
+
     /// 單元圖資料存取專用介面。
     public var gramQuerier: Homa.GramQuerier
     /// 輕量級的在庫檢查 API，供 insertKeys() 快速確認讀音是否存在，
@@ -65,6 +106,41 @@ extension Homa {
     public var gramAvailabilityChecker: Homa.GramAvailabilityChecker?
     /// 用以洞察使用者字詞節點覆寫行為的 API。
     public var perceptor: BehaviorPerceptor?
+
+    /// 判定一筆元圖為「零頻兜底詞」的分數門檻（log10 機率域，與節點權重同尺度）。
+    ///
+    /// 詞庫中有相當一批「詞典有收、語料無用例」的詞條，它們領的是一個固定的兜底分數。
+    /// 這批詞條會在兩處造成困擾，本門檻同時服務於兩者：
+    /// - **選字窗排序**：低於門檻者一律沉至末尾，其餘維持「先詞長、後權重」的既有排序。
+    /// - **組句評分**：低於門檻者另受 `rarePhrasePerSyllableFloor` 的長度縮放約束
+    ///   （該機制預設停用，僅在呼叫端指定每音節代價時生效）。
+    ///
+    /// - Remark: 選字窗排序刻意只做「沉底」這一件事。詞長排序本身承載著「敲了三個音通常
+    /// 是想要一個三字詞」這項輸入預期，且選字窗並不會高亮當前組句選中的詞、首項即是預設
+    /// 選項；若讓權重全面凌駕詞長，敲完「水果汁」後首項會變成權重更高的「果汁」，一選就
+    /// 把正確的組字拆掉。設為 `-.infinity` 可同時停用兩者，完整還原歷史行為（組句評分的
+    /// 長度縮放本就預設停用，故預設情況下本門檻只影響選字窗排序）。
+    public var rarityThreshold: Double
+
+    /// 零頻兜底詞在組句評分時、每個音節所應付出的代價（log10 機率域）。
+    ///
+    /// 詞庫給零頻詞條的兜底分數是**固定值**、不隨音節數縮放，因此一個從未出現過的四音節
+    /// 詞與一個從未出現過的雙音節詞領到相同的分數。DP 累加各節點的對數機率，節點越少總分
+    /// 越高，於是這類長的零頻詞會系統性地擊敗逐字組合——原廠詞庫中，光是雙音節就有七千
+    /// 餘筆「兩字皆常用、卻仍會被零頻詞蓋過」的讀音組合。
+    ///
+    /// 此處為低於 `rarityThreshold` 的元圖補上長度縮放：其分數至多為本值乘以音節數，
+    /// 相當於要求「一個零頻的 n 音節詞，至少得付出 n 個中等常用字的代價」。單音節元圖
+    /// 不受影響。設為 `nil` 可停用本機制。
+    ///
+    /// **預設為 `nil`（停用）**：以原廠詞庫實測時，校準值 `-6.0` 讓「很像」「試過」等
+    /// 正確的零頻複合詞被拆成「很／向」「是／過」，整體反而變差，詳見
+    /// `suggestedRarePhrasePerSyllableFloor`。呼叫端須自行選用。
+    ///
+    /// - Remark: 僅作用於節點的**單元圖**計分。帶語境的元圖（雙元圖／三元圖，例如 POM
+    /// 記憶注入者）與使用者明確覆寫（`.withSpecified`）之分數一律不受本機制約束——前者是
+    /// 「該語境下確有用例」的證據、本就不屬於零頻兜底詞，後者則是使用者的明確意志。
+    public var rarePhrasePerSyllableFloor: Double?
     /// 組態設定。
     /// - Remark: setter 為 `internal`：組字器在模組內部需要就地改寫節點狀態（節點為
     /// Struct、無法再靠引用穿透值拷貝），但對模組外部維持唯讀。

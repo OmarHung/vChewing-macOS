@@ -61,10 +61,23 @@ extension Homa.Assembler {
     }
     // 預先為每個候選字算好排序鍵值，避免 comparator 在每次比較時重新 joined() 出字串
     // （原先每次候選窗開啟都會產生 O(n·log n) 個一次性字串）。
-    // 排序鍵順序：先 segment length（降序）、再 probability（降序）、再 keyArray 字面
-    // （降序）——與 `queryGrams` 的 `sortGram` 語義一致（先權重、後索引鍵字面）。
-    let keyed = result.map { candidate in
+    //
+    // 主排序鍵是「這個候選是否極罕見」，其餘一律維持既有的「先 segment length（降序）、
+    // 再 probability（降序）、再 keyArray 字面（降序）」——後三者與 `queryGrams` 的
+    // `sortGram` 語義一致（先權重、後索引鍵字面）。
+    //
+    // 詞庫中有相當一批「詞典有收、語料無用例」的零頻詞條，它們領的是兜底分數（原廠詞庫
+    // 的地板為 -9.32），卻因為詞長是支配性的排序鍵而長期佔據選字窗前列。此處只把這批
+    // 候選沉至末尾，不動其餘任何排序——詞長排序本身承載著「敲了三個音通常是想要一個
+    // 三字詞」這項輸入預期，貿然讓權重全面凌駕詞長會連帶破壞選字與輪替的既有語義。
+    // `rarityThreshold` 為 `-.infinity` 時無候選會被判為罕見，行為與歷史一致。
+    let rarityThreshold = rarityThreshold
+    let keyed = result.map { candidate -> (
+      isNotRare: Bool, segLength: Int, weight: Double, joinedKey: String,
+      candidate: Homa.CandidatePairWeighted
+    ) in
       (
+        isNotRare: candidate.weight >= rarityThreshold,
         segLength: candidate.pair.segLength,
         weight: candidate.weight,
         joinedKey: candidate.pair.keyArray.joined(separator: "-"),
@@ -72,7 +85,8 @@ extension Homa.Assembler {
       )
     }
     return keyed.sorted {
-      ($0.segLength, $0.weight, $0.joinedKey) > ($1.segLength, $1.weight, $1.joinedKey)
+      ($0.isNotRare ? 1 : 0, $0.segLength, $0.weight, $0.joinedKey)
+        > ($1.isNotRare ? 1 : 0, $1.segLength, $1.weight, $1.joinedKey)
     }.map(\.candidate)
   }
 

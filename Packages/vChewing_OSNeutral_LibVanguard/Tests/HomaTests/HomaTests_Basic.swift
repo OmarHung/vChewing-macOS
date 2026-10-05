@@ -423,9 +423,12 @@ extension HomaTestsRoot {
       assembler.cursor = assembler.keys.count
       let candidates = assembler.fetchCandidates(filter: .endAt)
       let values = candidates.map(\.pair.value)
-      // 期望：先 segment length（雙音節詞在前）、再 probability、再 key——
-      // 而非先 keyArray 字面（聲調符號會把「細按」誤排最前）。
-      #expect(values == ["西岸", "西安", "錫安", "細按", "按", "岸"])
+      // 期望：先「是否極罕見」、再 segment length（雙音節詞在前）、再 probability、
+      // 再 key——而非先 keyArray 字面（聲調符號會把「細按」誤排最前）。
+      //
+      // 「細按」（-9.315）低於罕見門檻而沉至末位；其餘候選一律維持既有的詞長優先排序。
+      // 詳見 `Homa.Assembler.rarityThreshold`。
+      #expect(values == ["西岸", "西安", "錫安", "按", "岸", "細按"])
       // 對照：現況（排序鍵含 joinedKey 於 weight 之前）會把「細按」排最前。
     }
   }
