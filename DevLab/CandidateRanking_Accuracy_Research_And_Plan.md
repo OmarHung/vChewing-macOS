@@ -231,7 +231,8 @@ Enter 遞交：commit(text:) → inputHandler.clear()（不留任何紀錄）
 | B3 字級退避 | 完成 | 多字 previous 另注入「尾字」版本（×0.8）；Homa `getScore` 允許單字 previous 以尾字比對。 |
 | B4 PathFinder parent gram | 完成（確認為真 bug） | 新測試 `HomaTests_PathFinderParentGram`。 |
 | C1–C4 刪除重打偵測 | 完成 | `RecentCommitLedger`＋`InputHandler_RetypeCorrection.swift`：遞交快照→空狀態 BackSpace 計數（≤3、10 秒內、同 client、無其他按鍵）→重打相同讀音時以次佳候選替換、候選窗把被拒值移到同詞長群組尾；Enter 隱式確認寫一筆 POM，若被拒值來自 POM 則移除該筆記憶。隱藏偏好 `RetypeCorrectionDetectionEnabled`（預設開）。狂打、SCPC、磁帶模式不啟用。測試 IH730–742。未實作 `clientAttributedSubstring` 驗證。 |
-| B5／B6 詞庫端 | 未動 | 需使用者決定是否動 VanguardLexicon。 |
+| B6 詞庫字頻重算 | 已實驗、結果為負、預設關閉 | 在 `~/myprojects/vChewing-VanguardLexicon` 分支 `research/char-frequency-from-phrases`（commit 60240ca5）實作「由詞表反推字頻」三種模式（replace／blend／shift，`VC_CHARFREQ_MODE`），種子集 65 句與保留集 44 句皆變差（最好的 shift γ=0.1 仍掉 3＋2 句）。原因：字在詞表內出現的次數不等於它單用的頻率——吧、又、跟、嗎、裡、就這類虛詞很少在詞條內、被壓低，作、市、根、罷這類構詞字被抬高。詳見該倉庫 `ValueAdds/Specs/CharFrequencyFromPhrases.md`。結論：單字分數必須來自真實語料字頻（外部資料），詞表反推不可行。 |
+| B5 原廠 bigram | 未動 | 需外部語料；與 B6 結論一致，資料層改善須引入語料。 |
 
 評測重跑（所有改動就位、POM 關閉）：44/65 句、566/594 字，與基線一致。
 
