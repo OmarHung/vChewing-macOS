@@ -1,0 +1,2562 @@
+{
+  "parseIssues" : [
+
+  ],
+  "results" : [
+    {
+      "actual" : "我在世一次",
+      "comparison" : {
+        "correctCharCount" : 3,
+        "diffPositions" : [
+          1,
+          2
+        ],
+        "isExactMatch" : false,
+        "isLengthMismatch" : false
+      },
+      "expected" : "我再試一次",
+      "lineNumber" : 14,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄨㄛˇ",
+        "ㄗㄞˋ",
+        "ㄕˋ",
+        "ㄧ",
+        "ㄘˋ"
+      ],
+      "segments" : [
+        "我",
+        "在世",
+        "一次"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "等一下我在世一次",
+      "comparison" : {
+        "correctCharCount" : 6,
+        "diffPositions" : [
+          4,
+          5
+        ],
+        "isExactMatch" : false,
+        "isLengthMismatch" : false
+      },
+      "expected" : "等一下我再試一次",
+      "lineNumber" : 15,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄉㄥˇ",
+        "ㄧ",
+        "ㄒㄧㄚˋ",
+        "ㄨㄛˇ",
+        "ㄗㄞˋ",
+        "ㄕˋ",
+        "ㄧ",
+        "ㄘˋ"
+      ],
+      "segments" : [
+        "等一下",
+        "我",
+        "在世",
+        "一次"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "你在把這個檔案傳給我",
+      "comparison" : {
+        "correctCharCount" : 9,
+        "diffPositions" : [
+          1
+        ],
+        "isExactMatch" : false,
+        "isLengthMismatch" : false
+      },
+      "expected" : "你再把這個檔案傳給我",
+      "lineNumber" : 16,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄋㄧˇ",
+        "ㄗㄞˋ",
+        "ㄅㄚˇ",
+        "ㄓㄜˋ",
+        "ㄍㄜ˙",
+        "ㄉㄤˇ",
+        "ㄢˋ",
+        "ㄔㄨㄢˊ",
+        "ㄍㄟˇ",
+        "ㄨㄛˇ"
+      ],
+      "segments" : [
+        "你在",
+        "把",
+        "這個",
+        "檔案",
+        "傳給",
+        "我"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "他已經在公司了",
+      "comparison" : {
+        "correctCharCount" : 7,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "他已經在公司了",
+      "lineNumber" : 17,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄊㄚ",
+        "ㄧˇ",
+        "ㄐㄧㄥ",
+        "ㄗㄞˋ",
+        "ㄍㄨㄥ",
+        "ㄙ",
+        "ㄌㄜ˙"
+      ],
+      "segments" : [
+        "他",
+        "已經",
+        "在",
+        "公司",
+        "了"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "我現在在家裡等你",
+      "comparison" : {
+        "correctCharCount" : 8,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "我現在在家裡等你",
+      "lineNumber" : 18,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄨㄛˇ",
+        "ㄒㄧㄢˋ",
+        "ㄗㄞˋ",
+        "ㄗㄞˋ",
+        "ㄐㄧㄚ",
+        "ㄌㄧˇ",
+        "ㄉㄥˇ",
+        "ㄋㄧˇ"
+      ],
+      "segments" : [
+        "我",
+        "現在在",
+        "家裡",
+        "等",
+        "你"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "明天再說吧我先回家了",
+      "comparison" : {
+        "correctCharCount" : 10,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "明天再說吧我先回家了",
+      "lineNumber" : 19,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄇㄧㄥˊ",
+        "ㄊㄧㄢ",
+        "ㄗㄞˋ",
+        "ㄕㄨㄛ",
+        "ㄅㄚ˙",
+        "ㄨㄛˇ",
+        "ㄒㄧㄢ",
+        "ㄏㄨㄟˊ",
+        "ㄐㄧㄚ",
+        "ㄌㄜ˙"
+      ],
+      "segments" : [
+        "明天",
+        "再說",
+        "吧",
+        "我",
+        "先",
+        "回家",
+        "了"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "你在等我一下我馬上到",
+      "comparison" : {
+        "correctCharCount" : 9,
+        "diffPositions" : [
+          1
+        ],
+        "isExactMatch" : false,
+        "isLengthMismatch" : false
+      },
+      "expected" : "你再等我一下我馬上到",
+      "lineNumber" : 20,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄋㄧˇ",
+        "ㄗㄞˋ",
+        "ㄉㄥˇ",
+        "ㄨㄛˇ",
+        "ㄧ",
+        "ㄒㄧㄚˋ",
+        "ㄨㄛˇ",
+        "ㄇㄚˇ",
+        "ㄕㄤˋ",
+        "ㄉㄠˋ"
+      ],
+      "segments" : [
+        "你在",
+        "等",
+        "我",
+        "一下",
+        "我",
+        "馬上",
+        "到"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "會議改在下午三點",
+      "comparison" : {
+        "correctCharCount" : 8,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "會議改在下午三點",
+      "lineNumber" : 21,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄏㄨㄟˋ",
+        "ㄧˋ",
+        "ㄍㄞˇ",
+        "ㄗㄞˋ",
+        "ㄒㄧㄚˋ",
+        "ㄨˇ",
+        "ㄙㄢ",
+        "ㄉㄧㄢˇ"
+      ],
+      "segments" : [
+        "會議",
+        "改在",
+        "下午",
+        "三點"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "他說他明天再來找你",
+      "comparison" : {
+        "correctCharCount" : 9,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "他說他明天再來找你",
+      "lineNumber" : 22,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄊㄚ",
+        "ㄕㄨㄛ",
+        "ㄊㄚ",
+        "ㄇㄧㄥˊ",
+        "ㄊㄧㄢ",
+        "ㄗㄞˋ",
+        "ㄌㄞˊ",
+        "ㄓㄠˇ",
+        "ㄋㄧˇ"
+      ],
+      "segments" : [
+        "他說",
+        "他",
+        "明天",
+        "再來",
+        "找",
+        "你"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "我在想要不要換工作",
+      "comparison" : {
+        "correctCharCount" : 9,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "我在想要不要換工作",
+      "lineNumber" : 23,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄨㄛˇ",
+        "ㄗㄞˋ",
+        "ㄒㄧㄤˇ",
+        "ㄧㄠˋ",
+        "ㄅㄨˋ",
+        "ㄧㄠˋ",
+        "ㄏㄨㄢˋ",
+        "ㄍㄨㄥ",
+        "ㄗㄨㄛˋ"
+      ],
+      "segments" : [
+        "我在",
+        "想要",
+        "不要",
+        "換",
+        "工作"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "他們正在討論這件事",
+      "comparison" : {
+        "correctCharCount" : 9,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "他們正在討論這件事",
+      "lineNumber" : 24,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄊㄚ",
+        "ㄇㄣ˙",
+        "ㄓㄥˋ",
+        "ㄗㄞˋ",
+        "ㄊㄠˇ",
+        "ㄌㄨㄣˋ",
+        "ㄓㄜˋ",
+        "ㄐㄧㄢˋ",
+        "ㄕˋ"
+      ],
+      "segments" : [
+        "他們",
+        "正在",
+        "討論",
+        "這件事"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "你先試試看在決定",
+      "comparison" : {
+        "correctCharCount" : 7,
+        "diffPositions" : [
+          5
+        ],
+        "isExactMatch" : false,
+        "isLengthMismatch" : false
+      },
+      "expected" : "你先試試看再決定",
+      "lineNumber" : 25,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄋㄧˇ",
+        "ㄒㄧㄢ",
+        "ㄕˋ",
+        "ㄕˋ",
+        "ㄎㄢˋ",
+        "ㄗㄞˋ",
+        "ㄐㄩㄝˊ",
+        "ㄉㄧㄥˋ"
+      ],
+      "segments" : [
+        "你",
+        "先",
+        "試試看",
+        "在",
+        "決定"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "這件事我做的到",
+      "comparison" : {
+        "correctCharCount" : 6,
+        "diffPositions" : [
+          5
+        ],
+        "isExactMatch" : false,
+        "isLengthMismatch" : false
+      },
+      "expected" : "這件事我做得到",
+      "lineNumber" : 27,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄓㄜˋ",
+        "ㄐㄧㄢˋ",
+        "ㄕˋ",
+        "ㄨㄛˇ",
+        "ㄗㄨㄛˋ",
+        "ㄉㄜ˙",
+        "ㄉㄠˋ"
+      ],
+      "segments" : [
+        "這件事",
+        "我",
+        "做的",
+        "到"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "他今天穿的很漂亮",
+      "comparison" : {
+        "correctCharCount" : 6,
+        "diffPositions" : [
+          0,
+          4
+        ],
+        "isExactMatch" : false,
+        "isLengthMismatch" : false
+      },
+      "expected" : "她今天穿得很漂亮",
+      "lineNumber" : 28,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄊㄚ",
+        "ㄐㄧㄣ",
+        "ㄊㄧㄢ",
+        "ㄔㄨㄢ",
+        "ㄉㄜ˙",
+        "ㄏㄣˇ",
+        "ㄆㄧㄠˋ",
+        "ㄌㄧㄤˋ"
+      ],
+      "segments" : [
+        "他",
+        "今天",
+        "穿的",
+        "很",
+        "漂亮"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "他跑的比我快多了",
+      "comparison" : {
+        "correctCharCount" : 7,
+        "diffPositions" : [
+          2
+        ],
+        "isExactMatch" : false,
+        "isLengthMismatch" : false
+      },
+      "expected" : "他跑得比我快多了",
+      "lineNumber" : 29,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄊㄚ",
+        "ㄆㄠˇ",
+        "ㄉㄜ˙",
+        "ㄅㄧˇ",
+        "ㄨㄛˇ",
+        "ㄎㄨㄞˋ",
+        "ㄉㄨㄛ",
+        "ㄌㄜ˙"
+      ],
+      "segments" : [
+        "他",
+        "跑",
+        "的",
+        "比",
+        "我",
+        "快",
+        "多",
+        "了"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "他慢慢的走進教室",
+      "comparison" : {
+        "correctCharCount" : 6,
+        "diffPositions" : [
+          0,
+          3
+        ],
+        "isExactMatch" : false,
+        "isLengthMismatch" : false
+      },
+      "expected" : "她慢慢地走進教室",
+      "lineNumber" : 30,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄊㄚ",
+        "ㄇㄢˋ",
+        "ㄇㄢˋ",
+        "ㄉㄜ˙",
+        "ㄗㄡˇ",
+        "ㄐㄧㄣˋ",
+        "ㄐㄧㄠˋ",
+        "ㄕˋ"
+      ],
+      "segments" : [
+        "他",
+        "慢慢",
+        "的",
+        "走進",
+        "教室"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "我的手機放在桌上",
+      "comparison" : {
+        "correctCharCount" : 8,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "我的手機放在桌上",
+      "lineNumber" : 31,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄨㄛˇ",
+        "ㄉㄜ˙",
+        "ㄕㄡˇ",
+        "ㄐㄧ",
+        "ㄈㄤˋ",
+        "ㄗㄞˋ",
+        "ㄓㄨㄛ",
+        "ㄕㄤˋ"
+      ],
+      "segments" : [
+        "我的",
+        "手機",
+        "放在",
+        "桌上"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "這是我最喜歡的歌",
+      "comparison" : {
+        "correctCharCount" : 8,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "這是我最喜歡的歌",
+      "lineNumber" : 32,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄓㄜˋ",
+        "ㄕˋ",
+        "ㄨㄛˇ",
+        "ㄗㄨㄟˋ",
+        "ㄒㄧˇ",
+        "ㄏㄨㄢ",
+        "ㄉㄜ˙",
+        "ㄍㄜ"
+      ],
+      "segments" : [
+        "這是",
+        "我",
+        "最",
+        "喜歡",
+        "的",
+        "歌"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "你說的事情我都知道了",
+      "comparison" : {
+        "correctCharCount" : 10,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "你說的事情我都知道了",
+      "lineNumber" : 33,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄋㄧˇ",
+        "ㄕㄨㄛ",
+        "ㄉㄜ˙",
+        "ㄕˋ",
+        "ㄑㄧㄥˊ",
+        "ㄨㄛˇ",
+        "ㄉㄡ",
+        "ㄓ",
+        "ㄉㄠˋ",
+        "ㄌㄜ˙"
+      ],
+      "segments" : [
+        "你說",
+        "的",
+        "事情",
+        "我",
+        "都",
+        "知道",
+        "了"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "他把孩子照顧的很好",
+      "comparison" : {
+        "correctCharCount" : 7,
+        "diffPositions" : [
+          0,
+          6
+        ],
+        "isExactMatch" : false,
+        "isLengthMismatch" : false
+      },
+      "expected" : "她把孩子照顧得很好",
+      "lineNumber" : 34,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄊㄚ",
+        "ㄅㄚˇ",
+        "ㄏㄞˊ",
+        "ㄗ˙",
+        "ㄓㄠˋ",
+        "ㄍㄨˋ",
+        "ㄉㄜ˙",
+        "ㄏㄣˇ",
+        "ㄏㄠˇ"
+      ],
+      "segments" : [
+        "他",
+        "把",
+        "孩子",
+        "照顧",
+        "的",
+        "很好"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "他很高興的跟大家打招呼",
+      "comparison" : {
+        "correctCharCount" : 9,
+        "diffPositions" : [
+          0,
+          4
+        ],
+        "isExactMatch" : false,
+        "isLengthMismatch" : false
+      },
+      "expected" : "她很高興地跟大家打招呼",
+      "lineNumber" : 35,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄊㄚ",
+        "ㄏㄣˇ",
+        "ㄍㄠ",
+        "ㄒㄧㄥˋ",
+        "ㄉㄜ˙",
+        "ㄍㄣ",
+        "ㄉㄚˋ",
+        "ㄐㄧㄚ",
+        "ㄉㄚˇ",
+        "ㄓㄠ",
+        "ㄏㄨ˙"
+      ],
+      "segments" : [
+        "他",
+        "很",
+        "高興",
+        "的",
+        "跟",
+        "大家",
+        "打",
+        "招呼"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "他做的菜比餐廳還好吃",
+      "comparison" : {
+        "correctCharCount" : 10,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "他做的菜比餐廳還好吃",
+      "lineNumber" : 36,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄊㄚ",
+        "ㄗㄨㄛˋ",
+        "ㄉㄜ˙",
+        "ㄘㄞˋ",
+        "ㄅㄧˇ",
+        "ㄘㄢ",
+        "ㄊㄧㄥ",
+        "ㄏㄞˊ",
+        "ㄏㄠˇ",
+        "ㄔ"
+      ],
+      "segments" : [
+        "他",
+        "做的",
+        "菜",
+        "比",
+        "餐廳",
+        "還",
+        "好吃"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "好像要下雨了記得帶散",
+      "comparison" : {
+        "correctCharCount" : 9,
+        "diffPositions" : [
+          9
+        ],
+        "isExactMatch" : false,
+        "isLengthMismatch" : false
+      },
+      "expected" : "好像要下雨了記得帶傘",
+      "lineNumber" : 37,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄏㄠˇ",
+        "ㄒㄧㄤˋ",
+        "ㄧㄠˋ",
+        "ㄒㄧㄚˋ",
+        "ㄩˇ",
+        "ㄌㄜ˙",
+        "ㄐㄧˋ",
+        "ㄉㄜ˙",
+        "ㄉㄞˋ",
+        "ㄙㄢˇ"
+      ],
+      "segments" : [
+        "好像",
+        "要",
+        "下雨",
+        "了",
+        "記得",
+        "帶",
+        "散"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "這個現象很值得研究",
+      "comparison" : {
+        "correctCharCount" : 9,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "這個現象很值得研究",
+      "lineNumber" : 38,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄓㄜˋ",
+        "ㄍㄜ˙",
+        "ㄒㄧㄢˋ",
+        "ㄒㄧㄤˋ",
+        "ㄏㄣˇ",
+        "ㄓˊ",
+        "ㄉㄜˊ",
+        "ㄧㄢˊ",
+        "ㄐㄧㄡˋ"
+      ],
+      "segments" : [
+        "這個",
+        "現象",
+        "很",
+        "值得",
+        "研究"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "這本書很好看他是我買的",
+      "comparison" : {
+        "correctCharCount" : 10,
+        "diffPositions" : [
+          6
+        ],
+        "isExactMatch" : false,
+        "isLengthMismatch" : false
+      },
+      "expected" : "這本書很好看它是我買的",
+      "lineNumber" : 40,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄓㄜˋ",
+        "ㄅㄣˇ",
+        "ㄕㄨ",
+        "ㄏㄣˇ",
+        "ㄏㄠˇ",
+        "ㄎㄢˋ",
+        "ㄊㄚ",
+        "ㄕˋ",
+        "ㄨㄛˇ",
+        "ㄇㄞˇ",
+        "ㄉㄜ˙"
+      ],
+      "segments" : [
+        "這本書",
+        "很",
+        "好看",
+        "他是",
+        "我",
+        "買的"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "他是我的大學同學",
+      "comparison" : {
+        "correctCharCount" : 7,
+        "diffPositions" : [
+          0
+        ],
+        "isExactMatch" : false,
+        "isLengthMismatch" : false
+      },
+      "expected" : "她是我的大學同學",
+      "lineNumber" : 41,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄊㄚ",
+        "ㄕˋ",
+        "ㄨㄛˇ",
+        "ㄉㄜ˙",
+        "ㄉㄚˋ",
+        "ㄒㄩㄝˊ",
+        "ㄊㄨㄥˊ",
+        "ㄒㄩㄝˊ"
+      ],
+      "segments" : [
+        "他是",
+        "我的",
+        "大學",
+        "同學"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "他長的很像他爸爸",
+      "comparison" : {
+        "correctCharCount" : 7,
+        "diffPositions" : [
+          2
+        ],
+        "isExactMatch" : false,
+        "isLengthMismatch" : false
+      },
+      "expected" : "他長得很像他爸爸",
+      "lineNumber" : 42,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄊㄚ",
+        "ㄓㄤˇ",
+        "ㄉㄜ˙",
+        "ㄏㄣˇ",
+        "ㄒㄧㄤˋ",
+        "ㄊㄚ",
+        "ㄅㄚˋ",
+        "ㄅㄚ˙"
+      ],
+      "segments" : [
+        "他",
+        "長",
+        "的",
+        "很像",
+        "他",
+        "爸爸"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "他們在市場買了很多菜",
+      "comparison" : {
+        "correctCharCount" : 10,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "他們在市場買了很多菜",
+      "lineNumber" : 44,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄊㄚ",
+        "ㄇㄣ˙",
+        "ㄗㄞˋ",
+        "ㄕˋ",
+        "ㄔㄤˇ",
+        "ㄇㄞˇ",
+        "ㄌㄜ˙",
+        "ㄏㄣˇ",
+        "ㄉㄨㄛ",
+        "ㄘㄞˋ"
+      ],
+      "segments" : [
+        "他們",
+        "在",
+        "市場",
+        "買了",
+        "很多",
+        "菜"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "這件事跟你沒有關係",
+      "comparison" : {
+        "correctCharCount" : 9,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "這件事跟你沒有關係",
+      "lineNumber" : 45,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄓㄜˋ",
+        "ㄐㄧㄢˋ",
+        "ㄕˋ",
+        "ㄍㄣ",
+        "ㄋㄧˇ",
+        "ㄇㄟˊ",
+        "ㄧㄡˇ",
+        "ㄍㄨㄢ",
+        "ㄒㄧˋ"
+      ],
+      "segments" : [
+        "這件事",
+        "跟",
+        "你",
+        "沒有",
+        "關係"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "請問市政府要怎麼走",
+      "comparison" : {
+        "correctCharCount" : 9,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "請問市政府要怎麼走",
+      "lineNumber" : 46,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄑㄧㄥˇ",
+        "ㄨㄣˋ",
+        "ㄕˋ",
+        "ㄓㄥˋ",
+        "ㄈㄨˇ",
+        "ㄧㄠˋ",
+        "ㄗㄣˇ",
+        "ㄇㄜ˙",
+        "ㄗㄡˇ"
+      ],
+      "segments" : [
+        "請問",
+        "市政府",
+        "要",
+        "怎麼",
+        "走"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "我是說這件事不是那樣",
+      "comparison" : {
+        "correctCharCount" : 10,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "我是說這件事不是那樣",
+      "lineNumber" : 47,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄨㄛˇ",
+        "ㄕˋ",
+        "ㄕㄨㄛ",
+        "ㄓㄜˋ",
+        "ㄐㄧㄢˋ",
+        "ㄕˋ",
+        "ㄅㄨˋ",
+        "ㄕˋ",
+        "ㄋㄚˋ",
+        "ㄧㄤˋ"
+      ],
+      "segments" : [
+        "我",
+        "是說",
+        "這件事",
+        "不是",
+        "那樣"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "這是我第一次來這裡",
+      "comparison" : {
+        "correctCharCount" : 9,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "這是我第一次來這裡",
+      "lineNumber" : 48,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄓㄜˋ",
+        "ㄕˋ",
+        "ㄨㄛˇ",
+        "ㄉㄧˋ",
+        "ㄧ",
+        "ㄘˋ",
+        "ㄌㄞˊ",
+        "ㄓㄜˋ",
+        "ㄌㄧˇ"
+      ],
+      "segments" : [
+        "這是",
+        "我",
+        "第一",
+        "次",
+        "來",
+        "這裡"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "你是不是忘記帶錢包了",
+      "comparison" : {
+        "correctCharCount" : 10,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "你是不是忘記帶錢包了",
+      "lineNumber" : 49,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄋㄧˇ",
+        "ㄕˋ",
+        "ㄅㄨˋ",
+        "ㄕˋ",
+        "ㄨㄤˋ",
+        "ㄐㄧˋ",
+        "ㄉㄞˋ",
+        "ㄑㄧㄢˊ",
+        "ㄅㄠ",
+        "ㄌㄜ˙"
+      ],
+      "segments" : [
+        "你是",
+        "不是",
+        "忘記",
+        "帶",
+        "錢包",
+        "了"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "這次考試比上次男多了",
+      "comparison" : {
+        "correctCharCount" : 9,
+        "diffPositions" : [
+          7
+        ],
+        "isExactMatch" : false,
+        "isLengthMismatch" : false
+      },
+      "expected" : "這次考試比上次難多了",
+      "lineNumber" : 50,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄓㄜˋ",
+        "ㄘˋ",
+        "ㄎㄠˇ",
+        "ㄕˋ",
+        "ㄅㄧˇ",
+        "ㄕㄤˋ",
+        "ㄘˋ",
+        "ㄋㄢˊ",
+        "ㄉㄨㄛ",
+        "ㄌㄜ˙"
+      ],
+      "segments" : [
+        "這次",
+        "考試",
+        "比上",
+        "次男",
+        "多",
+        "了"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "我已經試過很多次了",
+      "comparison" : {
+        "correctCharCount" : 9,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "我已經試過很多次了",
+      "lineNumber" : 51,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄨㄛˇ",
+        "ㄧˇ",
+        "ㄐㄧㄥ",
+        "ㄕˋ",
+        "ㄍㄨㄛˋ",
+        "ㄏㄣˇ",
+        "ㄉㄨㄛ",
+        "ㄘˋ",
+        "ㄌㄜ˙"
+      ],
+      "segments" : [
+        "我",
+        "已經",
+        "試過",
+        "很多",
+        "次",
+        "了"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "這家公司的市值很高",
+      "comparison" : {
+        "correctCharCount" : 9,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "這家公司的市值很高",
+      "lineNumber" : 52,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄓㄜˋ",
+        "ㄐㄧㄚ",
+        "ㄍㄨㄥ",
+        "ㄙ",
+        "ㄉㄜ˙",
+        "ㄕˋ",
+        "ㄓˊ",
+        "ㄏㄣˇ",
+        "ㄍㄠ"
+      ],
+      "segments" : [
+        "這家",
+        "公司",
+        "的",
+        "市值",
+        "很高"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "這是一件很重要的是",
+      "comparison" : {
+        "correctCharCount" : 8,
+        "diffPositions" : [
+          8
+        ],
+        "isExactMatch" : false,
+        "isLengthMismatch" : false
+      },
+      "expected" : "這是一件很重要的事",
+      "lineNumber" : 53,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄓㄜˋ",
+        "ㄕˋ",
+        "ㄧ",
+        "ㄐㄧㄢˋ",
+        "ㄏㄣˇ",
+        "ㄓㄨㄥˋ",
+        "ㄧㄠˋ",
+        "ㄉㄜ˙",
+        "ㄕˋ"
+      ],
+      "segments" : [
+        "這是",
+        "一件",
+        "很",
+        "重要",
+        "的",
+        "是"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "他做事一向都很認真",
+      "comparison" : {
+        "correctCharCount" : 9,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "他做事一向都很認真",
+      "lineNumber" : 55,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄊㄚ",
+        "ㄗㄨㄛˋ",
+        "ㄕˋ",
+        "ㄧ",
+        "ㄒㄧㄤˋ",
+        "ㄉㄡ",
+        "ㄏㄣˇ",
+        "ㄖㄣˋ",
+        "ㄓㄣ"
+      ],
+      "segments" : [
+        "他",
+        "做事",
+        "一向",
+        "都很",
+        "認真"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "我今天的作業還沒寫完",
+      "comparison" : {
+        "correctCharCount" : 10,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "我今天的作業還沒寫完",
+      "lineNumber" : 56,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄨㄛˇ",
+        "ㄐㄧㄣ",
+        "ㄊㄧㄢ",
+        "ㄉㄜ˙",
+        "ㄗㄨㄛˋ",
+        "ㄧㄝˋ",
+        "ㄏㄞˊ",
+        "ㄇㄟˊ",
+        "ㄒㄧㄝˇ",
+        "ㄨㄢˊ"
+      ],
+      "segments" : [
+        "我",
+        "今天",
+        "的",
+        "作業",
+        "還沒",
+        "寫完"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "我們一起做晚餐吧",
+      "comparison" : {
+        "correctCharCount" : 8,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "我們一起做晚餐吧",
+      "lineNumber" : 57,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄨㄛˇ",
+        "ㄇㄣ˙",
+        "ㄧ",
+        "ㄑㄧˇ",
+        "ㄗㄨㄛˋ",
+        "ㄨㄢˇ",
+        "ㄘㄢ",
+        "ㄅㄚ˙"
+      ],
+      "segments" : [
+        "我們",
+        "一起",
+        "做",
+        "晚餐",
+        "吧"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "這篇文章的作者是誰",
+      "comparison" : {
+        "correctCharCount" : 9,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "這篇文章的作者是誰",
+      "lineNumber" : 59,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄓㄜˋ",
+        "ㄆㄧㄢ",
+        "ㄨㄣˊ",
+        "ㄓㄤ",
+        "ㄉㄜ˙",
+        "ㄗㄨㄛˋ",
+        "ㄓㄜˇ",
+        "ㄕˋ",
+        "ㄕㄟˊ"
+      ],
+      "segments" : [
+        "這篇",
+        "文章",
+        "的",
+        "作者",
+        "是誰"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "你可以幫我一個忙嗎",
+      "comparison" : {
+        "correctCharCount" : 9,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "你可以幫我一個忙嗎",
+      "lineNumber" : 60,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄋㄧˇ",
+        "ㄎㄜˇ",
+        "ㄧˇ",
+        "ㄅㄤ",
+        "ㄨㄛˇ",
+        "ㄧ",
+        "ㄍㄜˋ",
+        "ㄇㄤˊ",
+        "ㄇㄚ˙"
+      ],
+      "segments" : [
+        "你",
+        "可以",
+        "幫",
+        "我",
+        "一個",
+        "忙",
+        "嗎"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "我以為你已經走了",
+      "comparison" : {
+        "correctCharCount" : 8,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "我以為你已經走了",
+      "lineNumber" : 61,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄨㄛˇ",
+        "ㄧˇ",
+        "ㄨㄟˊ",
+        "ㄋㄧˇ",
+        "ㄧˇ",
+        "ㄐㄧㄥ",
+        "ㄗㄡˇ",
+        "ㄌㄜ˙"
+      ],
+      "segments" : [
+        "我",
+        "以為",
+        "你",
+        "已經",
+        "走了"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "以後有問題可以直接問我",
+      "comparison" : {
+        "correctCharCount" : 11,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "以後有問題可以直接問我",
+      "lineNumber" : 62,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄧˇ",
+        "ㄏㄡˋ",
+        "ㄧㄡˇ",
+        "ㄨㄣˋ",
+        "ㄊㄧˊ",
+        "ㄎㄜˇ",
+        "ㄧˇ",
+        "ㄓˊ",
+        "ㄐㄧㄝ",
+        "ㄨㄣˋ",
+        "ㄨㄛˇ"
+      ],
+      "segments" : [
+        "以後",
+        "有",
+        "問題",
+        "可以",
+        "直接",
+        "問",
+        "我"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "這位記者已經到現場了",
+      "comparison" : {
+        "correctCharCount" : 10,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "這位記者已經到現場了",
+      "lineNumber" : 63,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄓㄜˋ",
+        "ㄨㄟˋ",
+        "ㄐㄧˋ",
+        "ㄓㄜˇ",
+        "ㄧˇ",
+        "ㄐㄧㄥ",
+        "ㄉㄠˋ",
+        "ㄒㄧㄢˋ",
+        "ㄔㄤˇ",
+        "ㄌㄜ˙"
+      ],
+      "segments" : [
+        "這位",
+        "記者",
+        "已經",
+        "到",
+        "現場",
+        "了"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "我已經把報告寄給你了",
+      "comparison" : {
+        "correctCharCount" : 10,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "我已經把報告寄給你了",
+      "lineNumber" : 64,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄨㄛˇ",
+        "ㄧˇ",
+        "ㄐㄧㄥ",
+        "ㄅㄚˇ",
+        "ㄅㄠˋ",
+        "ㄍㄠˋ",
+        "ㄐㄧˋ",
+        "ㄍㄟˇ",
+        "ㄋㄧˇ",
+        "ㄌㄜ˙"
+      ],
+      "segments" : [
+        "我",
+        "已經",
+        "把",
+        "報告",
+        "寄給",
+        "你",
+        "了"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "這個問題我想了很久",
+      "comparison" : {
+        "correctCharCount" : 9,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "這個問題我想了很久",
+      "lineNumber" : 65,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄓㄜˋ",
+        "ㄍㄜ˙",
+        "ㄨㄣˋ",
+        "ㄊㄧˊ",
+        "ㄨㄛˇ",
+        "ㄒㄧㄤˇ",
+        "ㄌㄜ˙",
+        "ㄏㄣˇ",
+        "ㄐㄧㄡˇ"
+      ],
+      "segments" : [
+        "這個",
+        "問題",
+        "我想",
+        "了",
+        "很久"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "這不是我要的東西",
+      "comparison" : {
+        "correctCharCount" : 8,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "這不是我要的東西",
+      "lineNumber" : 66,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄓㄜˋ",
+        "ㄅㄨˋ",
+        "ㄕˋ",
+        "ㄨㄛˇ",
+        "ㄧㄠˋ",
+        "ㄉㄜ˙",
+        "ㄉㄨㄥ",
+        "ㄒㄧ"
+      ],
+      "segments" : [
+        "這",
+        "不是",
+        "我要",
+        "的",
+        "東西"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "他今天早上又遲到了",
+      "comparison" : {
+        "correctCharCount" : 9,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "他今天早上又遲到了",
+      "lineNumber" : 68,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄊㄚ",
+        "ㄐㄧㄣ",
+        "ㄊㄧㄢ",
+        "ㄗㄠˇ",
+        "ㄕㄤˋ",
+        "ㄧㄡˋ",
+        "ㄔˊ",
+        "ㄉㄠˋ",
+        "ㄌㄜ˙"
+      ],
+      "segments" : [
+        "他",
+        "今天",
+        "早上",
+        "又",
+        "遲到",
+        "了"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "前面路口右轉就到了",
+      "comparison" : {
+        "correctCharCount" : 9,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "前面路口右轉就到了",
+      "lineNumber" : 69,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄑㄧㄢˊ",
+        "ㄇㄧㄢˋ",
+        "ㄌㄨˋ",
+        "ㄎㄡˇ",
+        "ㄧㄡˋ",
+        "ㄓㄨㄢˇ",
+        "ㄐㄧㄡˋ",
+        "ㄉㄠˋ",
+        "ㄌㄜ˙"
+      ],
+      "segments" : [
+        "前面",
+        "路口",
+        "右轉",
+        "就",
+        "到了"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "你有沒有看到我的鑰匙",
+      "comparison" : {
+        "correctCharCount" : 10,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "你有沒有看到我的鑰匙",
+      "lineNumber" : 70,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄋㄧˇ",
+        "ㄧㄡˇ",
+        "ㄇㄟˊ",
+        "ㄧㄡˇ",
+        "ㄎㄢˋ",
+        "ㄉㄠˋ",
+        "ㄨㄛˇ",
+        "ㄉㄜ˙",
+        "ㄧㄠˋ",
+        "ㄕ˙"
+      ],
+      "segments" : [
+        "你",
+        "有沒有",
+        "看到",
+        "我的",
+        "鑰匙"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "一年一度的運動會又到了",
+      "comparison" : {
+        "correctCharCount" : 11,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "一年一度的運動會又到了",
+      "lineNumber" : 71,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄧ",
+        "ㄋㄧㄢˊ",
+        "ㄧ",
+        "ㄉㄨˋ",
+        "ㄉㄜ˙",
+        "ㄩㄣˋ",
+        "ㄉㄨㄥˋ",
+        "ㄏㄨㄟˋ",
+        "ㄧㄡˋ",
+        "ㄉㄠˋ",
+        "ㄌㄜ˙"
+      ],
+      "segments" : [
+        "一年",
+        "一度",
+        "的",
+        "運動會",
+        "又",
+        "到了"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "那家電的牛肉麵很好吃",
+      "comparison" : {
+        "correctCharCount" : 9,
+        "diffPositions" : [
+          2
+        ],
+        "isExactMatch" : false,
+        "isLengthMismatch" : false
+      },
+      "expected" : "那家店的牛肉麵很好吃",
+      "lineNumber" : 73,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄋㄚˋ",
+        "ㄐㄧㄚ",
+        "ㄉㄧㄢˋ",
+        "ㄉㄜ˙",
+        "ㄋㄧㄡˊ",
+        "ㄖㄡˋ",
+        "ㄇㄧㄢˋ",
+        "ㄏㄣˇ",
+        "ㄏㄠˇ",
+        "ㄔ"
+      ],
+      "segments" : [
+        "那",
+        "家電",
+        "的",
+        "牛肉麵",
+        "很",
+        "好吃"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "你要去哪裡吃午餐",
+      "comparison" : {
+        "correctCharCount" : 8,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "你要去哪裡吃午餐",
+      "lineNumber" : 74,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄋㄧˇ",
+        "ㄧㄠˋ",
+        "ㄑㄩˋ",
+        "ㄋㄚˇ",
+        "ㄌㄧˇ",
+        "ㄔ",
+        "ㄨˇ",
+        "ㄘㄢ"
+      ],
+      "segments" : [
+        "你要",
+        "去",
+        "哪裡",
+        "吃",
+        "午餐"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "門口那個人士哪一味",
+      "comparison" : {
+        "correctCharCount" : 7,
+        "diffPositions" : [
+          5,
+          8
+        ],
+        "isExactMatch" : false,
+        "isLengthMismatch" : false
+      },
+      "expected" : "門口那個人是哪一位",
+      "lineNumber" : 75,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄇㄣˊ",
+        "ㄎㄡˇ",
+        "ㄋㄚˋ",
+        "ㄍㄜ˙",
+        "ㄖㄣˊ",
+        "ㄕˋ",
+        "ㄋㄚˇ",
+        "ㄧ",
+        "ㄨㄟˋ"
+      ],
+      "segments" : [
+        "門口",
+        "那個",
+        "人士",
+        "哪",
+        "一味"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "那天的是我想跟你道歉",
+      "comparison" : {
+        "correctCharCount" : 9,
+        "diffPositions" : [
+          3
+        ],
+        "isExactMatch" : false,
+        "isLengthMismatch" : false
+      },
+      "expected" : "那天的事我想跟你道歉",
+      "lineNumber" : 76,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄋㄚˋ",
+        "ㄊㄧㄢ",
+        "ㄉㄜ˙",
+        "ㄕˋ",
+        "ㄨㄛˇ",
+        "ㄒㄧㄤˇ",
+        "ㄍㄣ",
+        "ㄋㄧˇ",
+        "ㄉㄠˋ",
+        "ㄑㄧㄢˋ"
+      ],
+      "segments" : [
+        "那天",
+        "的",
+        "是",
+        "我想",
+        "跟",
+        "你",
+        "道歉"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "請大家趕快進來做",
+      "comparison" : {
+        "correctCharCount" : 7,
+        "diffPositions" : [
+          7
+        ],
+        "isExactMatch" : false,
+        "isLengthMismatch" : false
+      },
+      "expected" : "請大家趕快進來坐",
+      "lineNumber" : 78,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄑㄧㄥˇ",
+        "ㄉㄚˋ",
+        "ㄐㄧㄚ",
+        "ㄍㄢˇ",
+        "ㄎㄨㄞˋ",
+        "ㄐㄧㄣˋ",
+        "ㄌㄞˊ",
+        "ㄗㄨㄛˋ"
+      ],
+      "segments" : [
+        "請",
+        "大家",
+        "趕快",
+        "進來",
+        "做"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "我家附近新開了一家咖啡店",
+      "comparison" : {
+        "correctCharCount" : 12,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "我家附近新開了一家咖啡店",
+      "lineNumber" : 79,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄨㄛˇ",
+        "ㄐㄧㄚ",
+        "ㄈㄨˋ",
+        "ㄐㄧㄣˋ",
+        "ㄒㄧㄣ",
+        "ㄎㄞ",
+        "ㄌㄜ˙",
+        "ㄧ",
+        "ㄐㄧㄚ",
+        "ㄎㄚ",
+        "ㄈㄟ",
+        "ㄉㄧㄢˋ"
+      ],
+      "segments" : [
+        "我家",
+        "附近",
+        "新開",
+        "了",
+        "一家",
+        "咖啡店"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "最近工作進度有點落後",
+      "comparison" : {
+        "correctCharCount" : 10,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "最近工作進度有點落後",
+      "lineNumber" : 80,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄗㄨㄟˋ",
+        "ㄐㄧㄣˋ",
+        "ㄍㄨㄥ",
+        "ㄗㄨㄛˋ",
+        "ㄐㄧㄣˋ",
+        "ㄉㄨˋ",
+        "ㄧㄡˇ",
+        "ㄉㄧㄢˇ",
+        "ㄌㄨㄛˋ",
+        "ㄏㄡˋ"
+      ],
+      "segments" : [
+        "最近",
+        "工作",
+        "進度",
+        "有點",
+        "落後"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "我們進去裡面看看吧",
+      "comparison" : {
+        "correctCharCount" : 9,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "我們進去裡面看看吧",
+      "lineNumber" : 81,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄨㄛˇ",
+        "ㄇㄣ˙",
+        "ㄐㄧㄣˋ",
+        "ㄑㄩˋ",
+        "ㄌㄧˇ",
+        "ㄇㄧㄢˋ",
+        "ㄎㄢˋ",
+        "ㄎㄢˋ",
+        "ㄅㄚ˙"
+      ],
+      "segments" : [
+        "我們",
+        "進去",
+        "裡面",
+        "看看",
+        "吧"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "我對這個地方的印象很好",
+      "comparison" : {
+        "correctCharCount" : 11,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "我對這個地方的印象很好",
+      "lineNumber" : 83,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄨㄛˇ",
+        "ㄉㄨㄟˋ",
+        "ㄓㄜˋ",
+        "ㄍㄜ˙",
+        "ㄉㄧˋ",
+        "ㄈㄤ",
+        "ㄉㄜ˙",
+        "ㄧㄣˋ",
+        "ㄒㄧㄤˋ",
+        "ㄏㄣˇ",
+        "ㄏㄠˇ"
+      ],
+      "segments" : [
+        "我",
+        "對",
+        "這個",
+        "地方",
+        "的",
+        "印象",
+        "很好"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "你往這個方向一直走",
+      "comparison" : {
+        "correctCharCount" : 9,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "你往這個方向一直走",
+      "lineNumber" : 84,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄋㄧˇ",
+        "ㄨㄤˇ",
+        "ㄓㄜˋ",
+        "ㄍㄜ˙",
+        "ㄈㄤ",
+        "ㄒㄧㄤˋ",
+        "ㄧ",
+        "ㄓˊ",
+        "ㄗㄡˇ"
+      ],
+      "segments" : [
+        "你",
+        "往",
+        "這個",
+        "方向",
+        "一直走"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "你到底想跟我說什麼",
+      "comparison" : {
+        "correctCharCount" : 9,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "你到底想跟我說什麼",
+      "lineNumber" : 86,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄋㄧˇ",
+        "ㄉㄠˋ",
+        "ㄉㄧˇ",
+        "ㄒㄧㄤˇ",
+        "ㄍㄣ",
+        "ㄨㄛˇ",
+        "ㄕㄨㄛ",
+        "ㄕㄣˊ",
+        "ㄇㄜ˙"
+      ],
+      "segments" : [
+        "你",
+        "到底",
+        "想",
+        "跟我說",
+        "什麼"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "我不知道他什麼時候到",
+      "comparison" : {
+        "correctCharCount" : 10,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "我不知道他什麼時候到",
+      "lineNumber" : 87,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄨㄛˇ",
+        "ㄅㄨˋ",
+        "ㄓ",
+        "ㄉㄠˋ",
+        "ㄊㄚ",
+        "ㄕㄣˊ",
+        "ㄇㄜ˙",
+        "ㄕˊ",
+        "ㄏㄡˋ",
+        "ㄉㄠˋ"
+      ],
+      "segments" : [
+        "我",
+        "不知道",
+        "他",
+        "什麼",
+        "時候",
+        "到"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    },
+    {
+      "actual" : "這條路一直走就會到車站",
+      "comparison" : {
+        "correctCharCount" : 11,
+        "diffPositions" : [
+
+        ],
+        "isExactMatch" : true,
+        "isLengthMismatch" : false
+      },
+      "expected" : "這條路一直走就會到車站",
+      "lineNumber" : 88,
+      "missingReadings" : [
+
+      ],
+      "readings" : [
+        "ㄓㄜˋ",
+        "ㄊㄧㄠˊ",
+        "ㄌㄨˋ",
+        "ㄧ",
+        "ㄓˊ",
+        "ㄗㄡˇ",
+        "ㄐㄧㄡˋ",
+        "ㄏㄨㄟˋ",
+        "ㄉㄠˋ",
+        "ㄔㄜ",
+        "ㄓㄢˋ"
+      ],
+      "segments" : [
+        "這條路",
+        "一直走",
+        "就",
+        "會到",
+        "車站"
+      ],
+      "source" : "ranking-eval-seed.tsv",
+      "unreachablePositions" : [
+
+      ]
+    }
+  ],
+  "runInfo" : {
+    "inputFiles" : [
+      "ranking-eval-seed.tsv"
+    ],
+    "lexiconByteSize" : 13880445,
+    "lexiconFileName" : "VanguardFactoryDict4Typing.txtMap",
+    "options" : {
+      "chs" : "false",
+      "cns" : "false",
+      "etenDOSUnigrams" : "true",
+      "maxSegLength" : "10",
+      "pom" : "disabled",
+      "symbols" : "true",
+      "userPhrases" : "empty"
+    }
+  },
+  "summary" : {
+    "casesWithUnreachableChars" : 0,
+    "charAccuracy" : 0.9529,
+    "correctChars" : 566,
+    "correctSentences" : 44,
+    "distinctMissingReadings" : [
+
+    ],
+    "evaluatedCases" : 65,
+    "lengthMismatchCases" : 0,
+    "missingReadingOccurrences" : 0,
+    "sentenceAccuracy" : 0.6769,
+    "skippedCases" : 0,
+    "totalCases" : 65,
+    "totalChars" : 594
+  }
+}

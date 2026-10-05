@@ -66,6 +66,13 @@ let package = Package(
         "vChewingSharedCLI"
       }
     )
+    /// 離線組句評測（DevLab 用，不隨輸入法出貨）。
+    Product.executable(
+      name: "vChewingRankingEval",
+      targets: buildStrings {
+        "vChewingRankingEval"
+      }
+    )
   },
   dependencies: buildPackageDependencies {
     .package(path: "Deps/VanguardSwiftExtension")
@@ -193,7 +200,32 @@ let package = Package(
       }
     )
 
+    // 離線組句評測：純函式（TSV 解析、指標計算、報表）置於 `RankingEvalKit` 以便單元測試，
+    // 實際載入辭典與組句者為 `vChewingRankingEval`。辭典路徑由環境變數 `VCHEWING_EVAL_TXTMAP` 指定。
+    Target.target(
+      name: "RankingEvalKit"
+    )
+    Target.executableTarget(
+      name: "vChewingRankingEval",
+      dependencies: buildTargetDependencies {
+        "RankingEvalKit"
+        "LexiconAssembly"
+        "Homa"
+        "Shared"
+      },
+      swiftSettings: buildSwiftSettings {
+        .defaultIsolation(MainActor.self) // set Default Actor Isolation
+      }
+    )
+
     // MARK: - Test Targets
+
+    Target.testTarget(
+      name: "RankingEvalKitTests",
+      dependencies: buildTargetDependencies {
+        "RankingEvalKit"
+      }
+    )
 
     Target.testTarget(
       name: "BPMFVSTests",
