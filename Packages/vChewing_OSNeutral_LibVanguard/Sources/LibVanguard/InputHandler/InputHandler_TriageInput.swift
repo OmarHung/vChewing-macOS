@@ -10,6 +10,22 @@
 extension InputHandlerProtocol {
   public func triageInput(event input: InputSignalProtocol) -> Bool {
     guard let session = session else { return false }
+    // 刪除重打修正：每顆分診過的按鍵都要觀察（累計刪除、進入或解除待命）。
+    recentCommitLedger.noteTriagedKey()
+    let wasEmptyBefore = session.state.type == .ofEmpty && !isComposingForRetypeCorrection
+    let commitGenerationBefore = recentCommitLedger.commitGeneration
+    let handled = triageInputCore(event: input)
+    observeKeyForRetypeCorrection(
+      input,
+      wasEmptyBefore: wasEmptyBefore,
+      commitGenerationBefore: commitGenerationBefore,
+      handled: handled
+    )
+    return handled
+  }
+
+  private func triageInputCore(event input: InputSignalProtocol) -> Bool {
+    guard let session = session else { return false }
     var state: State { session.state }
     currentLM.syncPrefs()
 
@@ -252,11 +268,11 @@ extension InputHandlerProtocol {
       let result = handleCandidate(input: input)
       guard !result, state.type == .ofAssociates else { return true }
       session.switchState(State.ofEmpty())
-      return triageInput(event: input)
+      return triageInputCore(event: input)
     case .ofMarking:
       if handleMarkingState(input: input) { return true }
       session.switchState(state.convertedToInputting)
-      return triageInput(event: input)
+      return triageInputCore(event: input)
     case .ofEmpty, .ofInputting:
       // 功能鍵（F1－F20）於輸入法持有未遞交的內容時就地攔截、且不作任何處理：這些鍵若
       // 放行給客體，客體會以該鍵自身的字元改寫組字區（未遞交的讀音消失、且寫入不可列印

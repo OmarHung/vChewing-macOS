@@ -67,6 +67,7 @@ public final class MockInputHandler: @MainActor InputHandlerProtocol {
   public var furiousConfig = FuriousTypingConfig() // 狂拼模式之執行期狀態
   public var composer: Tekkon.Composer = .init()
   public var assembler: Homa.Assembler
+  public var recentCommitLedger = RecentCommitLedger()
   public var isJISKeyboard: (() -> Bool)? = { false }
   public var narrator: (any SpeechNarratorProtocol)?
 
@@ -107,6 +108,7 @@ public final class MockSession: @MainActor SessionCoreProtocol {
   public var selectionKeys: String = "123456789"
   public var recentCommissions = [String]()
   public var clientAccentColor: HSBA?
+  public var clientBundleIdentifier: String = ""
   public var trieCacheFlushHandler: (() -> ())?
 
   public var state: IMEState = .init() {

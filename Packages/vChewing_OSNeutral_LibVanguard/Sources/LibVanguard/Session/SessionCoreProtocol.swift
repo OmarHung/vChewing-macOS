@@ -29,6 +29,8 @@ public protocol SessionCoreProtocol: AnyObject & CtlCandidateDelegate {
   var state: IMEState { get set }
   var isASCIIMode: Bool { get }
   var clientMitigationLevel: Int { get }
+  /// 客體的 bundleIdentifier（刪除重打修正用以判斷是否仍是同一客體）。
+  var clientBundleIdentifier: String { get }
   var ui: SessionUIProtocol? { get }
 
   // MARK: Handler
@@ -94,12 +96,15 @@ extension SessionCoreProtocol {
       // 使用頻次帳本與最近遞交帳本皆須在 `clear()` 清空組字器之前記錄（本處為所有遞交路徑的匯流點）。
       if next.type == .ofCommitting {
         inputHandler?.recordUsageLedgerOnCommit(committedText: next.textToCommit)
+        inputHandler?.recordRecentCommitForRetypeCorrection(committedText: next.textToCommit)
         commit(text: next.textToCommit)
       } else if next.type == .ofEmpty, previous.hasComposition, let inputHandler {
         let textToCommit = inputHandler.committableDisplayText(
           sansReading: previous.type != .ofInputting
         )
         inputHandler.recordUsageLedgerOnCommit(committedText: textToCommit)
+        // 此路徑多半源於客體或焦點變更（並非使用者確認遞交）：刪除重打修正之帳本作廢。
+        inputHandler.resetRetypeCorrectionLedger()
         commit(text: textToCommit)
       }
       inputHandler?.clear()

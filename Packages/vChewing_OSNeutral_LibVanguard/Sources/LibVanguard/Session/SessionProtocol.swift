@@ -189,6 +189,7 @@ extension SessionProtocol {
   public func performServerDeactivation() {
     guard Self.current?.id != id else { return }
     isActivated = false
+    inputHandler?.resetRetypeCorrectionLedger() // 焦點離開：刪除重打修正之帳本作廢。
     // `resetInputHandler()` 會自動搞定 Empty 狀態。
     resetInputHandler(commitExisting: false)
     // macOS 不再處理 deactivated 狀態。
@@ -230,6 +231,7 @@ extension SessionProtocol {
         inputMode = resolvedInputMode
       }
       state = .ofEmpty()
+      inputHandler?.resetRetypeCorrectionLedger() // 重新啟用（焦點變更）：刪除重打修正之帳本作廢。
       lastAppliedKeyboardLayout = nil
       setKeyLayout()
       return
@@ -303,6 +305,7 @@ extension SessionProtocol {
     }
 
     this.state = .ofEmpty()
+    this.inputHandler?.resetRetypeCorrectionLedger() // 重新啟用（焦點／客體變更）：帳本作廢。
     // 閂滯態不越出當前打字會話之 context：本函式不呼 `resetInputHandler()`，
     // 故須在此獨立重設（靜默）。
     this.inputHandler?.releaseLatchedAlnumState(announce: false)

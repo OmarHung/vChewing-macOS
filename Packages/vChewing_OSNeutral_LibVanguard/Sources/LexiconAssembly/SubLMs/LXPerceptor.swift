@@ -23,6 +23,10 @@ extension LXAssembly {
     public var forceHighScoreOverride = false
     public var scenario: Scenario?
     public var overrideCursor: Int?
+    /// 實際命中之記憶鍵（含 `alternateKeys` 退避所得者）。容錯模式之全掃描命中時為 `nil`。
+    ///
+    /// 供「僅清除這一筆記憶」之用（例：刪除重打修正判定某個 POM 建議有誤時）。
+    public var matchedNGramKey: String?
 
     public var isEmpty: Bool { candidates.isEmpty }
 
@@ -345,12 +349,14 @@ extension LXAssembly.LXPerceptor {
         }
       }
       // 容錯模式：exact＋alternateKeys 皆落空時，改以「逐段去聲調等值」全掃描重試。
+      var isToneInsensitiveHit = false
       if suggestions == nil, matchMode == .toneInsensitivePrefix {
         if let tolerantSuggestion = getToneInsensitiveSuggestion(
           key: keyGenerationResult.ngramKey,
           timestamp: timestamp
         ) {
           suggestions = tolerantSuggestion
+          isToneInsensitiveHit = true
         }
       }
 
@@ -360,7 +366,8 @@ extension LXAssembly.LXPerceptor {
         candidates: suggestions,
         forceHighScoreOverride: forceFlag,
         scenario: nil,
-        overrideCursor: keyCursorRaw
+        overrideCursor: keyCursorRaw,
+        matchedNGramKey: isToneInsensitiveHit ? nil : activeKey
       )
     }
   }

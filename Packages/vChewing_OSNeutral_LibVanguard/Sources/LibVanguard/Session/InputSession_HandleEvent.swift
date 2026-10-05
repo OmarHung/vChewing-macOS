@@ -60,8 +60,14 @@ extension SessionProtocol {
     switch event.type {
     case .flagsChanged: return handleKeyDown(event: event)
     case .keyDown:
+      let triagedKeyCountBefore = inputHandler?.recentCommitLedger.triagedKeyCount
       let result = handleKeyDown(event: event)
       if result { previouslyHandledEvents.append(event) }
+      // 刪除重打修正：未經輸入調度模組分診即放行的按鍵（例：⌘ 熱鍵、Emacs／VIM 熱鍵模擬）
+      // 同屬「遞交之後出現了其他按鍵」，帳本作廢。
+      if let inputHandler, triagedKeyCountBefore == inputHandler.recentCommitLedger.triagedKeyCount {
+        inputHandler.resetRetypeCorrectionLedger()
+      }
       return result
     case .keyUp: return handleKeyUp(event: event)
     }

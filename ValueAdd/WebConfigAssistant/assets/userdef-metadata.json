@@ -1,5 +1,5 @@
 {
-  "count" : 120,
+  "count" : 121,
   "entries" : [
     {
       "default" : false,
@@ -3896,6 +3896,34 @@
       "optionsKind" : null,
       "range" : null,
       "rawValue" : "CandidateUsageLedgerEnabled",
+      "type" : "bool"
+    },
+    {
+      "default" : true,
+      "defaultsType" : "bool",
+      "exchangeBlacklisted" : false,
+      "key" : "kRetypeCorrectionDetectionEnabled",
+      "labels" : {
+        "en" : {
+
+        },
+        "ja" : {
+
+        },
+        "zh-Hans" : {
+
+        },
+        "zh-Hant" : {
+
+        }
+      },
+      "metadataPending" : false,
+      "metadataPendingReason" : "none",
+      "minimumOS" : 10.9,
+      "options" : null,
+      "optionsKind" : null,
+      "range" : null,
+      "rawValue" : "RetypeCorrectionDetectionEnabled",
       "type" : "bool"
     },
     {

@@ -52,6 +52,8 @@ public protocol InputHandlerProtocol: AnyObject {
   var furiousConfig: FuriousTypingConfig { get set } // 狂拼模式之執行期狀態
   var composer: Tekkon.Composer { get set } // 注拼槽
   var assembler: Homa.Assembler { get set } // 組字器
+  /// 最近一次遞交之帳本（刪除重打修正偵測用）。
+  var recentCommitLedger: RecentCommitLedger { get set }
 }
 
 // MARK: - InputHandlerProtocol 便利存取器
@@ -250,6 +252,9 @@ extension InputHandlerProtocol {
     currentTypingMethod = .vChewingFactory
     backupCursor = nil
     furiousConfig.resetAll() // 狀態重置：狂拼之整批執行期狀態（trail＋當拍狀態）一併失效。
+    // 刪除重打修正：組字區被清空（遞交、中止）即解除待命；但剛記下的遞交紀錄須保留
+    // （`switchState(.ofCommitting)` 在記錄之後才呼叫本函式）。
+    recentCommitLedger.disarm()
   }
 
   /// 解除中英混打之「閂滯於英打」狀態。
@@ -316,6 +321,8 @@ extension InputHandlerProtocol {
     explicitlyChosen: Bool = false
   ) {
     invalidateFuriousTrail() // 選字為使用者顯式干涉：狂拼 trail 失效。
+    // 刪除重打修正：顯式選字之後，了結（或清除錯誤記憶）該區間的修正對象。
+    defer { if explicitlyChosen { noteExplicitChoiceForRetypeCorrection() } }
     let theCandidate: Homa.CandidatePair = .init(candidate)
     let preservedSentenceBeforeConsolidation = assembler.assembledSentence
     let preservedCursorPosition = actualNodeCursorPosition
@@ -848,6 +855,11 @@ extension InputHandlerProtocol {
       arrCandidates = promoteCandidatesByUsage(arrCandidates, pinned: learnedPromotions)
     }
 
+    // 刪除重打修正：待命期間，把被否決之值移到其詞長群組之末（須在使用頻次前移之後）。
+    if !fixOrder {
+      arrCandidates = demoteRejectedCandidatesForRetypeCorrection(arrCandidates)
+    }
+
     return arrCandidates.map { ($0.keyArray, $0.value) }
   }
 
@@ -983,6 +995,8 @@ extension InputHandlerProtocol {
     rawCandidates: [Homa.CandidatePairWeighted]? = nil
   )
     -> [(String, Homa.Gram)] {
+    // 刪除重打修正：須在 POM 自動套用之後執行，故置於 defer（涵蓋所有提前返回之路徑）。
+    defer { if apply { applyRetypeCorrectionIfArmed() } }
     var arrResult = [(String, Homa.Gram)]()
     /// 如果逐字選字模式有啟用的話，直接放棄執行這個函式。
     if prefs.useSCPCTypingMode { return arrResult }

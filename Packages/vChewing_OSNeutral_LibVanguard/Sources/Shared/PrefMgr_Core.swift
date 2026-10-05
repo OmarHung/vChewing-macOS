@@ -161,6 +161,9 @@ public final class PrefMgr: PrefMgrProtocol, Sendable {
   @AppProperty(userDef: .kCandidateUsageLedgerEnabled)
   public var candidateUsageLedgerEnabled: Bool
 
+  @AppProperty(userDef: .kRetypeCorrectionDetectionEnabled)
+  public var retypeCorrectionDetectionEnabled: Bool
+
   @AppProperty(userDef: .kUseFixedCandidateOrderOnSelection)
   public var useFixedCandidateOrderOnSelection: Bool
 
