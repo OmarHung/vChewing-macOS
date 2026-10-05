@@ -337,9 +337,31 @@ extension InputHandlerProtocol {
         isExplicitlyOverridden: explicitlyChosen,
         enforceRetokenization: true
       )
+      // 使用者再度確認了既有的 POM 建議：刷新該記憶（`cnt`／`ts` 遞增並移至 LRU 前端），
+      // 否則一筆天天在用的記憶仍會自初次學習起約 8 天後過期。
+      if overrideTaskResult,
+         let refreshedObservation = Homa.makePerceptionIntel(
+           previouslyAssembled: preservedSentenceBeforeConsolidation,
+           currentAssembled: assembler.assembledSentence,
+           cursor: preservedCursorPosition
+         ) {
+        memorizePOMObservation(refreshedObservation, skipObservation: skipObservation)
+      }
     }
     // 若無 POM 建議或覆寫失敗，走原有覆寫流程
     if !overrideTaskResult {
+      // 使用者只是確認了預設組句本來就顯示在游標處的候選（詞值與讀音皆相同），且沒有任何
+      // POM 記憶與之相符：此時仍照常覆寫（固化節點），但不寫入新的 POM 記憶。
+      // 理由：POM 的職責是記住「修正」；「確認預設」並未提供新的偏好資訊，若照寫只會徒增
+      // 記憶鍵、擠佔 LRU 容量。從「確認預設」中學習使用頻次一事，留待規劃中的使用頻次帳本處理。
+      let isConfirmingDisplayedDefault: Bool = {
+        guard pomSuggestion == nil else { return false }
+        guard let preservedHit = preservedSentenceBeforeConsolidation
+          .findGram(at: preservedCursorPosition)
+        else { return false }
+        return preservedHit.gram.value == theCandidate.value
+          && preservedHit.gram.keyArray == theCandidate.keyArray
+      }()
       var pomObservation: Homa.PerceptionIntel?
       var pomObservationPrimary: Homa.PerceptionIntel?
       var pomObservation2ndary: Homa.PerceptionIntel?
@@ -397,23 +419,38 @@ extension InputHandlerProtocol {
         pomObservation = adjustedObservation
       }
       guard let pomObservation else { return }
-      pomProcessing: if pomObservation.scoreFromLM > -12,
-                        prefs.fetchSuggestionsFromPerceptionOverrideModel {
-        if skipObservation { break pomProcessing }
-        vCLog("POM: Start Observation.")
-        prefs.failureFlagForPOMObservation = true
-        currentLM.memorizePerception(
-          (pomObservation.contextualizedGramKey, pomObservation.candidate),
-          timestamp: Date().timeIntervalSince1970,
-          saveCallback: pomSaveCallback
-        )
-        prefs.failureFlagForPOMObservation = false
+      if !isConfirmingDisplayedDefault {
+        memorizePOMObservation(pomObservation, skipObservation: skipObservation)
       }
     }
 
     if moveCursorAfterSelectingCandidate, respectCursorPushing {
       try? assembler.jumpCursorBySegment(to: .front)
     }
+  }
+
+  /// 將一筆 POM 觀測結果寫入（或刷新）漸退記憶模組。
+  ///
+  /// 寫入條件：該觀測之語言模型分數須高於 -12、使用者啟用了 POM 建議、且呼叫端未要求略過觀測。
+  /// 對既有的記憶鍵而言，`memorizePerception` 只會遞增 `cnt`、更新 `ts`、並將之移至 LRU 前端。
+  /// - Parameters:
+  ///   - observation: 由 `Homa.makePerceptionIntel` 生成的觀測結果。
+  ///   - skipObservation: 不要讓漸退記憶模組對此做出觀察。
+  func memorizePOMObservation(
+    _ observation: Homa.PerceptionIntel,
+    skipObservation: Bool
+  ) {
+    guard !skipObservation else { return }
+    guard observation.scoreFromLM > -12 else { return }
+    guard prefs.fetchSuggestionsFromPerceptionOverrideModel else { return }
+    vCLog("POM: Start Observation.")
+    prefs.failureFlagForPOMObservation = true
+    currentLM.memorizePerception(
+      (observation.contextualizedGramKey, observation.candidate),
+      timestamp: Date().timeIntervalSince1970,
+      saveCallback: pomSaveCallback
+    )
+    prefs.failureFlagForPOMObservation = false
   }
 
   public func previewCurrentCandidateAtCompositionBuffer() {
@@ -743,6 +780,9 @@ extension InputHandlerProtocol {
       || !prefs.fetchSuggestionsFromPerceptionOverrideModel
       || prefs.useSCPCTypingMode
       || currentTypingMethod != .vChewingFactory
+    /// 經 POM 建議置頂的候選（依 POM 建議之原始順序）。倚天 DOS 固定序重排單字候選之後，
+    /// 會再把其中的單字候選重新置於單字群組之首，以免學習結果被固定序覆蓋。
+    var learnedPromotions: [Homa.CandidatePair] = []
     switch skipPOMHandling {
     case false:
       let arrSuggestedUnigrams: [(String, Homa.Gram)] = retrievePOMSuggestions(
@@ -762,6 +802,7 @@ extension InputHandlerProtocol {
       let filteredSuggestedCandidates = arrSuggestedCandidates.filter {
         rawCandidateSignatures.contains(makeCanonicalPair(from: $0))
       }
+      learnedPromotions = filteredSuggestedCandidates
       arrCandidates = filteredSuggestedCandidates + arrCandidates
       arrCandidates = deduplicateCandidatesPreservingOrder(arrCandidates)
       arrCandidates = arrCandidates.stableSort { $0.keyArray.count > $1.keyArray.count }
@@ -779,8 +820,13 @@ extension InputHandlerProtocol {
         let arrSeq4ETen: [Homa.CandidatePair] = seq4ETen.map {
           .init(key: eTenCandidates.reading, value: $0)
         }
-        arrCandidates = eTenCandidates.longerSegments + deduplicateCandidatesPreservingOrder(
+        // 倚天序列僅作為單字候選的「基底順序」；學習結果（目前為 POM 建議）再疊加於其上。
+        let eTenOrderedSingles = deduplicateCandidatesPreservingOrder(
           arrSeq4ETen + eTenCandidates.singleSegments
+        )
+        arrCandidates = eTenCandidates.longerSegments + promoteLearnedSingles(
+          eTenOrderedSingles,
+          promoted: learnedPromotions
         )
       } else {
         let supplementalCandidates = supplementalETenSingleKanjiCandidates(
@@ -809,6 +855,39 @@ extension InputHandlerProtocol {
       seen.insert(signature)
       return true
     }
+  }
+
+  /// 將學習結果所推薦的單字候選，重新置於（已依倚天 DOS 固定序排好的）單字候選群組之首。
+  ///
+  /// 倚天固定序在此視為單字候選的基底順序，而學習訊號則疊加於其上：
+  /// - `promoted` 之中、確實存在於 `singles` 內的單字候選，依其在 `promoted` 內的相對順序置前；
+  /// - 其餘單字候選維持原本（倚天）順序；
+  /// - `promoted` 為空時（例如逐字選字模式、或未啟用 POM 建議）原樣返回 `singles`。
+  ///
+  /// 「使用頻次」前移則於其後由 `promoteCandidatesByUsage(_:pinned:)` 統一套用（同樣以本處置頂的
+  /// 候選為釘選項），故 POM 建議恆優先於使用頻次。
+  /// - Parameters:
+  ///   - singles: 已依倚天固定序排好的單字候選。
+  ///   - promoted: 學習結果所推薦的候選（可含多字詞；多字詞會被忽略）。
+  /// - Returns: 套用學習結果之後的單字候選陣列。
+  private func promoteLearnedSingles(
+    _ singles: [Homa.CandidatePair],
+    promoted: [Homa.CandidatePair]
+  )
+    -> [Homa.CandidatePair] {
+    guard !promoted.isEmpty else { return singles }
+    let singleSignatures = Set(singles.map(makeCanonicalPair(from:)))
+    let promotedSingles = deduplicateCandidatesPreservingOrder(
+      promoted.filter {
+        $0.keyArray.count == 1 && singleSignatures.contains(makeCanonicalPair(from: $0))
+      }
+    )
+    guard !promotedSingles.isEmpty else { return singles }
+    let promotedSignatures = Set(promotedSingles.map(makeCanonicalPair(from:)))
+    let remainingSingles = singles.filter {
+      !promotedSignatures.contains(makeCanonicalPair(from: $0))
+    }
+    return promotedSingles + remainingSingles
   }
 
   private func segregateCandidatesForETenDOS(

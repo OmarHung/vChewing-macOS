@@ -1273,6 +1273,152 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     #expect(zaiIndex < zai4Index, "Expected 在 to precede 再, but got: \(candidateValues)")
   }
 
+  /// IH112C：倚天 DOS 固定序只是單字候選的「基底順序」，POM 學習結果須疊加其上。
+  ///
+  /// 舊行為：POM 先把「再」置頂，倚天重排卻以「倚天序列＋原單字」重建單字群組，
+  /// 把「再」推回倚天位置（ㄗㄞˋ 永遠是「在再載…」），學習結果在選字窗內完全看不到。
+  @Test
+  func test_IH112C_ETenSequenceEnforcementKeepsPOMPromotedSingleOnTop() throws {
+    guard let testHandler else {
+      Issue.record("testHandler is nil.")
+      return
+    }
+    clearTestPOM()
+
+    let reading = "ㄗㄞˋ"
+    let eTenSequence = uniqueSingleIdeographicValues(
+      testHandler.currentLM.lxQuerier.supplementalValues(for: reading, strategy: .configuredLookup)
+    )
+    guard eTenSequence.count >= 3, eTenSequence.prefix(2) == ["在", "再"] else {
+      Issue.record("倚天中文 DOS 序列表測試資料不符預期：\(reading) → \(eTenSequence)")
+      return
+    }
+    let factoryTypeID: Int32 = testHandler.currentLM.isCHS ? 5 : 6
+    let textMap = makeTypingTextMap([
+      (
+        reading,
+        [
+          (value: "在", probability: -5.004, typeID: factoryTypeID),
+          (value: "再", probability: -5.007, typeID: factoryTypeID),
+        ]
+      ),
+    ])
+
+    defer {
+      LXAssembly.LXFacade.disconnectFactoryDictionary()
+      #expect(LXAssembly.LXFacade.connectToTestFactoryDictionary(textMapData: LXATestsData.textMapTestCoreLXData))
+      testHandler.prefs.fetchSuggestionsFromPerceptionOverrideModel = true
+      clearTestPOM()
+      testHandler.clear()
+    }
+
+    LXAssembly.LXFacade.disconnectFactoryDictionary()
+    #expect(LXAssembly.LXFacade.connectToTestFactoryDictionary(textMapData: textMap))
+    testHandler.clear()
+    testHandler.prefs.enforceETenDOSCandidateSequence = true
+    testHandler.prefs.useSCPCTypingMode = false
+    testHandler.prefs.fetchSuggestionsFromPerceptionOverrideModel = true
+    testHandler.currentLM.syncPrefs()
+
+    #expect(throws: Never.self) { try testHandler.assembler.insertKey(reading) }
+    #expect(testHandler.assembler.assemble().values == ["在"])
+
+    // 無 POM 記憶：倚天序維持不變（等同 IH112 之情境）。
+    #expect(testHandler.generateArrayOfCandidates(fixOrder: false).map(\.value) == eTenSequence)
+
+    // 寫入一筆「ㄗㄞˋ → 再」之記憶（格式同使用者於選字窗選「再」時所寫入者）。
+    testHandler.currentLM.memorizePerception(
+      (ngramKey: "()&()&(ㄗㄞˋ,再)", candidate: "再"),
+      timestamp: Date().timeIntervalSince1970
+    )
+
+    let candidateValues = testHandler.generateArrayOfCandidates(fixOrder: false).map(\.value)
+    let expectedValues = ["再"] + eTenSequence.filter { $0 != "再" }
+    #expect(
+      candidateValues == expectedValues,
+      "POM 置頂之單字須凌駕倚天序，其餘維持倚天序。Got: \(candidateValues)"
+    )
+
+    // 固定候選順序（fixOrder）時不讀取 POM：維持倚天序。
+    #expect(testHandler.generateArrayOfCandidates(fixOrder: true).map(\.value) == eTenSequence)
+
+    // 逐字選字模式略過 POM：維持倚天序。
+    testHandler.prefs.useSCPCTypingMode = true
+    defer { testHandler.prefs.useSCPCTypingMode = false }
+    #expect(testHandler.generateArrayOfCandidates(fixOrder: false).map(\.value) == eTenSequence)
+  }
+
+  /// IH112D：倚天固定序＋POM 置頂之下，多字詞候選仍排在所有單字候選之前。
+  @Test
+  func test_IH112D_ETenSequenceWithPOMPromotionKeepsLongerSegmentsFirst() throws {
+    guard let testHandler else {
+      Issue.record("testHandler is nil.")
+      return
+    }
+    clearTestPOM()
+
+    let reading = "ㄗㄞˋ"
+    let eTenSequence = uniqueSingleIdeographicValues(
+      testHandler.currentLM.lxQuerier.supplementalValues(for: reading, strategy: .configuredLookup)
+    )
+    guard eTenSequence.count >= 3, eTenSequence.prefix(2) == ["在", "再"] else {
+      Issue.record("倚天中文 DOS 序列表測試資料不符預期：\(reading) → \(eTenSequence)")
+      return
+    }
+    let factoryTypeID: Int32 = testHandler.currentLM.isCHS ? 5 : 6
+    let textMap = makeTypingTextMap([
+      (
+        "ㄒㄧㄢˋ",
+        [(value: "現", probability: -5.1, typeID: factoryTypeID)]
+      ),
+      (
+        "ㄒㄧㄢˋ-ㄗㄞˋ",
+        [(value: "現在", probability: -4.0, typeID: factoryTypeID)]
+      ),
+      (
+        reading,
+        [
+          (value: "在", probability: -5.004, typeID: factoryTypeID),
+          (value: "再", probability: -5.007, typeID: factoryTypeID),
+        ]
+      ),
+    ])
+
+    defer {
+      LXAssembly.LXFacade.disconnectFactoryDictionary()
+      #expect(LXAssembly.LXFacade.connectToTestFactoryDictionary(textMapData: LXATestsData.textMapTestCoreLXData))
+      testHandler.prefs.fetchSuggestionsFromPerceptionOverrideModel = true
+      clearTestPOM()
+      testHandler.clear()
+    }
+
+    LXAssembly.LXFacade.disconnectFactoryDictionary()
+    #expect(LXAssembly.LXFacade.connectToTestFactoryDictionary(textMapData: textMap))
+    testHandler.clear()
+    testHandler.prefs.enforceETenDOSCandidateSequence = true
+    testHandler.prefs.useSCPCTypingMode = false
+    testHandler.prefs.useRearCursorMode = false
+    testHandler.prefs.fetchSuggestionsFromPerceptionOverrideModel = true
+    testHandler.currentLM.syncPrefs()
+
+    #expect(throws: Never.self) { try testHandler.assembler.insertKey("ㄒㄧㄢˋ") }
+    #expect(throws: Never.self) { try testHandler.assembler.insertKey(reading) }
+    #expect(testHandler.assembler.assemble().values == ["現在"])
+
+    // 以注入之 POM 建議模擬「此處學過『再』」（多字詞節點之語境鍵無法直接寫入單字記憶）。
+    var suggestion = LXAssembly.OverrideSuggestion()
+    suggestion.candidates = [(keyArray: [reading], value: "再", probability: -0.1, previous: nil)]
+    suggestion.overrideCursor = 1
+    testHandler.currentLM.lxPerceptor.testInjectedSuggestion = suggestion
+
+    let candidateValues = testHandler.generateArrayOfCandidates(fixOrder: false).map(\.value)
+    let expectedValues = ["現在", "再"] + eTenSequence.filter { $0 != "再" }
+    #expect(
+      candidateValues == expectedValues,
+      "多字詞須在前、POM 置頂之單字次之、其餘維持倚天序。Got: \(candidateValues)"
+    )
+  }
+
   @Test
   func test_IH113_FilterNonCNSReadingsStillAllowsSelectingDemotedSingleKanji() throws {
     guard let testHandler, let testSession else {

@@ -322,7 +322,14 @@ extension LibVanguardTestsRoot.InputHandlerTests {
       clearTestPOM()
       #expect(testHandler.currentLM.lxPerceptor.getSavableData().isEmpty)
       testHandler.prefs.fetchSuggestionsFromPerceptionOverrideModel = true
-      try restoreTestState(manualCandidateSelection: true) // 生成 POM 記憶
+      try restoreTestState(manualCandidateSelection: true)
+      // 選字窗確認的是預設組句本來就顯示的「水果汁」：依 POM 寫入規則（只記「修正」），
+      // 這不會寫入記憶。故此處另行寫入一筆等價記憶，以維持本案例「已有 POM 記憶」之前提。
+      #expect(testHandler.currentLM.lxPerceptor.getSavableData().isEmpty)
+      testHandler.currentLM.memorizePerception(
+        (ngramKey: "()&()&(ㄕㄨㄟˇ-ㄍㄨㄛˇ-ㄓ,水果汁)", candidate: "水果汁"),
+        timestamp: Date().timeIntervalSince1970
+      )
       let pomDesc = testHandler.currentLM.lxPerceptor.getSavableData()
       #expect(!(pomDesc.isEmpty))
       #expect(pomDesc.map(\.key).description.contains("ㄕㄨㄟˇ-ㄍㄨㄛˇ-ㄓ"))
