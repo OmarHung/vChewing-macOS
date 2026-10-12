@@ -11,6 +11,35 @@ update:
 		./Scripts/vchewing-update-lexicon.swift --path .; \
 	fi
 
+# ── 鍵盤熱鍵使用手冊（`shortcuts.html`）之產製 ──────────────────────
+# 四語系一體產製：繁體中文之權威原文住官網倉（`vChewing-HomePage.io/manual/shortcuts.md`），
+# 本倉之 `Sources/vChewingIME_macOS/Resources/shortcuts-src/shortcuts.zh-Hant.md` 為其同步副本；
+# 簡體中文版由該副本推得；英日文為該目錄下之手寫原稿。詳見 `Scripts/Markdown2HTML/README.md`。
+# 產製器為 Swift 腳本，僅需 `swift` 在 PATH（不參與任何建置）。全程不聯網。
+SHORTCUTS_GENERATOR ?= ./Scripts/Markdown2HTML/generate-shortcuts.swift
+SHORTCUTS_HOMEPAGE ?= ../../../vChewing-HomePage.io
+
+.PHONY: shortcuts shortcutsCheck shortcutsList
+shortcuts:
+	@export LC_ALL=C; \
+	if [ -d "$(SHORTCUTS_HOMEPAGE)" ]; then \
+		"$(SHORTCUTS_GENERATOR)" --homepage "$(SHORTCUTS_HOMEPAGE)"; \
+	else \
+		echo "注意：官網倉不在 $(SHORTCUTS_HOMEPAGE)，改用本倉之同步副本。"; \
+		"$(SHORTCUTS_GENERATOR)"; \
+	fi
+
+shortcutsCheck:
+	@export LC_ALL=C; \
+	if [ -d "$(SHORTCUTS_HOMEPAGE)" ]; then \
+		"$(SHORTCUTS_GENERATOR)" --check --homepage "$(SHORTCUTS_HOMEPAGE)"; \
+	else \
+		"$(SHORTCUTS_GENERATOR)" --check; \
+	fi
+
+shortcutsList:
+	@export LC_ALL=C; "$(SHORTCUTS_GENERATOR)" --list
+
 ifdef ARCHS
 BUILD_SETTINGS += ARCHS="$(ARCHS)"
 BUILD_SETTINGS += ONLY_ACTIVE_ARCH=NO
@@ -417,7 +446,7 @@ DSTROOT = /Library/Input Methods
 VC_APP_ROOT = $(DSTROOT)/vChewing.app
 
 # Pin LC_ALL so CJK collation stays identical regardless of the machine's locale settings.
-.PHONY: lint format lintFormat lintFormatUncommitted
+.PHONY: lint format lintFormat lintFormatUncommitted formatObjC
 
 format:
 	@export LC_ALL=C; swiftformat --swiftversion 5.5 --indent 2 ./
@@ -444,6 +473,28 @@ lintFormatUncommitted:
 	else \
 		printf '%s\n' "$$files" | tr '\n' '\0' | xargs -0 swiftlint lint --fix --autocorrect --config .swiftlint.yml --; \
 		printf '%s\n' "$$files" | tr '\n' '\0' | xargs -0 swiftformat --swiftversion 5.5 --indent 2; \
+	fi
+
+# C／ObjC 源碼之格式化。倉根 `.clang-format` 只宣告 `BasedOnStyle: Google`，故
+# `--style=file` 即 Google preset（2 空格、`ColumnLimit: 80`、會重排 import）。
+# `clang-format` 通常不在 PATH（MacPorts 在 /opt/local/bin；Xcode／CLT 之 toolchain
+# 內亦有），故於執行期依序探尋。可用 `make formatObjC CLANG_FORMAT=<路徑>` 覆寫。
+formatObjC:
+	@export LC_ALL=C; \
+	cf="$(CLANG_FORMAT)"; \
+	if [ -z "$$cf" ]; then \
+		cf="$$(command -v clang-format 2>/dev/null || xcrun --find clang-format 2>/dev/null || echo /opt/local/bin/clang-format)"; \
+	fi; \
+	if [ ! -x "$$cf" ] && ! command -v "$$cf" >/dev/null 2>&1; then \
+		echo "找不到 clang-format（$$cf）。請安裝（MacPorts: sudo port install clang-format）、或指定 CLANG_FORMAT=<路徑>。"; \
+		exit 1; \
+	fi; \
+	files="$$(git ls-files -- '*.h' '*.c' '*.m' '*.mm' '*.cc' '*.hh' ':!Build/**' ':!Packages/Build/**' ':!Packages/**/.build/')"; \
+	if [ -z "$$files" ]; then \
+		echo "No C/ObjC files tracked by git."; \
+	else \
+		echo "Running clang-format ($$cf) on tracked C/ObjC files..."; \
+		printf '%s\n' "$$files" | tr '\n' '\0' | xargs -0 "$$cf" --style=file -i; \
 	fi
 
 .PHONY: install-release

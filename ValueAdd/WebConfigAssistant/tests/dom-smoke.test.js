@@ -103,6 +103,59 @@ test('冒煙：掛載後之 DOM 結構（Win2000 外框）', function () {
   assert.strictEqual(segsHosts[0].parentNode, rightHosts[0], '分段方塊應為右側容器之直接子節點');
 });
 
+test('冒煙：按鈕列左下角有官網與贊助之連結', function () {
+  const { dom } = bootApp('?lang=zh-Hant');
+  const hosts = dom.root.querySelectorAll('.vca-footer-links');
+  assert.strictEqual(hosts.length, 1, '按鈕列應恰有一組站台連結');
+
+  const links = findByTag(hosts[0], 'a');
+  assert.deepStrictEqual(links.map(function (a) { return a.textContent; }),
+    ['官網', '贊助'], '兩條連結之字面應為 zh-Hant 之本地化用語');
+  // 位址沿用官網站根（`VCA_DOC_BASE`），與題目之「深入說明 →」同源。
+  assert.deepStrictEqual(links.map(function (a) { return a.href; }),
+    ['https://vchewing.github.io/', 'https://vchewing.github.io/SPONSOR_ME.html']);
+  for (const link of links) {
+    assert.strictEqual(link.target, '_blank', '對外連結應另開視窗');
+    assert.strictEqual(link.className, 'vca-link', '應沿用站內連結之外觀');
+  }
+
+  // 位次：連結容器為按鈕列之首個子節點（連結在左、按鈕在右，靠 CSS 之浮動分邊）。
+  const footer = hosts[0].parentNode;
+  assert.strictEqual(footer.firstChild, hosts[0], '連結應在按鈕之前');
+  assert.strictEqual(findByTag(footer, 'button').length, 4, '按鈕列仍應為四顆鈕');
+
+  // 字重：兩連結之文字為粗體（事主 2026-10-07 指定）。
+  const css = fs.readFileSync(path.join(__dirname, '..', 'assets', 'assistant.css'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+  const rule = /\.vca-footer-links\s+a\s*\{([^}]*)\}/.exec(css);
+  assert.ok(rule, '應有 .vca-footer-links a 之規則');
+  assert.ok(/font-weight:\s*bold/.test(rule[1]),
+    '站台連結之文字應為粗體：' + rule[1].replace(/\s+/g, ' '));
+});
+
+test('冒煙：按鈕列兩連結之字面逐語系本地化', function () {
+  // 值以 i18n 表為準（此處逐語系釘住，免得表改了而無人察覺）。
+  const expected = {
+    'zh-Hant': ['官網', '贊助'],
+    'zh-Hans': ['官网', '赞助'],
+    'en': ['Website', 'Sponsor'],
+    'ja': ['公式サイト', 'ご支援'],
+  };
+  const seen = [];
+  for (const lang of Object.keys(expected)) {
+    const { dom, VCA } = bootApp('?lang=' + lang);
+    const links = findByTag(dom.root.querySelectorAll('.vca-footer-links')[0], 'a');
+    const labels = links.map(function (a) { return a.textContent; });
+    assert.deepStrictEqual(labels, expected[lang], lang + ' 之兩連結字面應本地化');
+    assert.deepStrictEqual(labels,
+      [VCA.UI_STRINGS[lang]['link.homepage'], VCA.UI_STRINGS[lang]['link.sponsor']],
+      lang + ' 之字面應與 i18n 表一致');
+    seen.push(labels.join('|'));
+  }
+  assert.strictEqual(new Set(seen).size, Object.keys(expected).length,
+    '四語系之字面應兩兩不同（否則即未本地化）');
+});
+
 test('冒煙：左側水印區之第三行說明當前頁面之職能', function () {
   const { dom, VCA } = bootApp('?lang=zh-Hant');
   const leftNote = function () {
@@ -762,6 +815,15 @@ test('冒煙：語言切換不重置答案', function () {
     if (radio.type === 'radio' && radio.checked) checkedCount += 1;
   }
   assert.strictEqual(checkedCount, 1, '先前的作答應仍為選中狀態');
+  // 按鈕列之文案亦隨語系重下（外框只建一次，靠 render 重下；`backBtn` 曾漏於此）。
+  assert.ok(findButtonByText(dom.root, '< Back'), '「上一步」鈕應已切為英文');
+  assert.strictEqual(findButtonByText(dom.root, '＜ 上一步'), null, '不得殘留中文之字樣');
+  assert.ok(findButtonByText(dom.root, 'Next >'), '「下一步」鈕應已切為英文');
+  // 左下角之站台連結亦隨語系重下（標籤為本地化之文案）。
+  const links = dom.root.querySelectorAll('.vca-footer-links');
+  assert.strictEqual(links.length, 1, '切換語系後站台連結仍應在場');
+  assert.deepStrictEqual(findByTag(links[0], 'a').map(function (a) { return a.textContent; }),
+    ['Website', 'Sponsor'], '站台連結之字面應已切為英文');
 });
 
 test('冒煙：取消對話框會清空作答', function () {
@@ -983,6 +1045,44 @@ test('靜態產物：dist/index.html 自動跳轉至 assistant.html', function (
     '應以 meta refresh 自動跳轉至 assistant.html');
   assert.ok(html.indexOf('href="assistant.html"') >= 0, '應附手動連結之後備');
   assert.ok(html.indexOf('唯音輸入法配置助手') >= 0, '入口頁之標題應為助手之全稱');
+});
+
+test('靜態產物：助手頁與入口頁皆附分享預覽（Open Graph）之標籤', function () {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  // 兩支各須自備：爬蟲不執行 JavaScript、亦不跟隨入口頁之 meta refresh。
+  const artifacts = {
+    'assistant.html': 'https://vchewing.github.io/assistant/assistant.html',
+    'index.html': 'https://vchewing.github.io/assistant/',
+  };
+  const required = [
+    'name="description"',
+    'property="og:type"',
+    'property="og:site_name"',
+    'property="og:title"',
+    'property="og:description"',
+    'property="og:url"',
+    'property="og:image"',
+    'property="og:image:width"',
+    'property="og:image:height"',
+    'property="og:image:alt"',
+    'property="og:locale"',
+    'name="twitter:card"',
+  ];
+  Object.keys(artifacts).forEach(function (name) {
+    const file = path.join(__dirname, '..', 'dist', name);
+    assert.ok(fs.existsSync(file), 'make bundle 應生 dist/' + name);
+    const html = fs.readFileSync(file, 'utf8');
+    required.forEach(function (tag) {
+      assert.ok(html.indexOf('<meta ' + tag + ' ') >= 0, name + ' 缺 ' + tag);
+    });
+    // 圖與網址皆須為絕對位址：爬蟲在站外取用，相對路徑對它毫無意義。
+    assert.ok(html.indexOf('content="https://vchewing.github.io/site_logo_opengraph.png"') >= 0,
+      name + ' 之 og:image 應為官網分享預覽圖之絕對位址');
+    assert.ok(html.indexOf('content="' + artifacts[name] + '"') >= 0,
+      name + ' 之 og:url 應為該檔自身之絕對位址');
+    assert.strictEqual(html.indexOf('{{OG}}'), -1, name + ' 不得殘留未替換之 {{OG}} 佔位符');
+  });
 });
 
 test('靜態樣式：內容區為固定高度（窗體不隨頁面內容變動）', function () {

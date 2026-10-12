@@ -5,7 +5,7 @@
     "../../Packages/vChewing_SettingsUI/Sources/SettingsUI/SettingsCocoa"
   ],
   "scannedFileCount": 31,
-  "count": 109,
+  "count": 113,
   "keys": [
     "kAcceptLeadingIntonations",
     "kAllowRescoringSingleKanjiCandidates",
@@ -34,6 +34,10 @@
     "kClassicHaninKeyboardSymbolModeShortcutEnabled",
     "kConsolidateContextOnCandidateSelection",
     "kCursorPlacementAfterSelectingCandidate",
+    "kDisableIMKSwiftClientWrapperTermination",
+    "kDisableIMKSwiftControllerDelayedDeallocation",
+    "kDisableIMKSwiftEvictedClientInvalidation",
+    "kDisableIMKSwiftServerControllerPruning",
     "kDisableSegmentedThickUnderlineInMarkingModeForManagedClients",
     "kDodgeInvalidEdgeCandidateCursorPosition",
     "kEnableCandidateWindowAnimation",

@@ -53,6 +53,18 @@ public final class PrefMgr: PrefMgrProtocol, Sendable {
   @AppProperty(userDef: .kCheckAbusersOfSecureEventInputAPI)
   public var checkAbusersOfSecureEventInputAPI: Bool
 
+  @AppProperty(userDef: .kDisableIMKSwiftServerControllerPruning)
+  public var disableIMKSwiftServerControllerPruning: Bool
+
+  @AppProperty(userDef: .kDisableIMKSwiftEvictedClientInvalidation)
+  public var disableIMKSwiftEvictedClientInvalidation: Bool
+
+  @AppProperty(userDef: .kDisableIMKSwiftClientWrapperTermination)
+  public var disableIMKSwiftClientWrapperTermination: Bool
+
+  @AppProperty(userDef: .kDisableIMKSwiftControllerDelayedDeallocation)
+  public var disableIMKSwiftControllerDelayedDeallocation: Bool
+
   @AppProperty(userDef: .kDeltaOfCalendarYears)
   public var deltaOfCalendarYears: Int
 
@@ -527,7 +539,13 @@ extension PrefMgr {
     if ![0, 1, 2].contains(preferredRevolverForceLevel) {
       preferredRevolverForceLevel = 2
     }
-    if ![0, 1, 2].contains(spaceKeyBehaviorAgainstICB) {
+    // 值域以 `UserDef` 之宣告為**唯一正本**（`-1 ... 2`）。
+    // - Important: 本處曾硬寫 `![0, 1, 2]` 之白名單，而該鍵之值域於 P294 擴為 `-1 ... 2` 時
+    //   漏改此處 ⇒ 使用者選了「插入空白字元（內文組字區）」之後，只要
+    //   `InputSession.activateServer()`（每次切換至此輸入法都會跑 `fixOddPreferences()`）
+    //   即被靜默改回 1（P241 之同類病灶再現）。改讀 `validNumeralValueRange` 即免於此類漂移。
+    if let range = UserDef.kSpaceKeyBehaviorAgainstICB.validNumeralValueRange,
+       !range.contains(spaceKeyBehaviorAgainstICB) {
       spaceKeyBehaviorAgainstICB = 1
     }
     migrateDeprecatedSettings()

@@ -16,10 +16,10 @@
 /// life‑cycle management, delayed‑dealloc block release, and `-activateServer:`
 /// re‑injection complexity.
 
+#import "include/IMKSwift.h"
 #import <Foundation/Foundation.h>
 #import <InputMethodKit/InputMethodKit.h>
 #import <objc/runtime.h>
-#import "include/IMKSwift.h"
 #import "include/IMKControllerLifetimeTracker.h"
 
 NS_ASSUME_NONNULL_BEGIN
@@ -45,112 +45,181 @@ static void (^_IMKSwift_onShowingPreferences)(uintptr_t);
 static void (^_IMKSwift_onHidingPallettes)(uintptr_t);
 static void (^_IMKSwift_onInputControllerWillClose)(uintptr_t);
 static NSRange (^_IMKSwift_onProvidingSelectionRange)(uintptr_t);
-static NSMenu * _Nullable (^_IMKSwift_onProvidingIMEMenu)(uintptr_t);
+static NSMenu *_Nullable (^_IMKSwift_onProvidingIMEMenu)(uintptr_t);
 static id _Nullable (^_IMKSwift_onProvidingComposedString)(uintptr_t);
 static void (^_IMKSwift_onAutoCommittingComposition)(uintptr_t);
 static NSUInteger (^_IMKSwift_onProvidingRecognizedEvents)(uintptr_t);
 static BOOL (^_IMKSwift_onHandlingGivenNullableEvent)(uintptr_t, uintptr_t);
 static void (^_IMKSwift_onSettingObjCValue)(uintptr_t, intptr_t, uintptr_t);
+static void (^_IMKSwift_onLogging)(const char *_Nullable);
+
+/// Diagnostic kill-switches for the private-surface interventions.  Evaluated
+/// at each decision point (never cached) so that a running process can be
+/// reconfigured from the preferences; `README`-style docs live in the header.
+static BOOL (^_IMKSwift_serverControllerPruningDisabled)(void);
+static BOOL (^_IMKSwift_evictedClientInvalidationDisabled)(void);
+static BOOL (^_IMKSwift_clientWrapperTerminationDisabled)(void);
+static BOOL (^_IMKSwift_controllerDelayedDeallocationDisabled)(void);
+
+/// Associated-object key marking that `-IMKSwift_delayedDealloc` has already
+/// terminated this controller's client wrapper.  Purely diagnostic: it lets the
+/// activation log tell a fresh controller apart from a resurrected shell whose
+/// client connection was torn down 3 seconds after deactivation.
+static char kIMKSwiftClientTerminatedKey;
+
+/// Forwards a formatted diagnostic message to the sink installed from Swift.
+/// Safe to call unconditionally: the sink performs its own debug-mode gating.
+static void IMKSwiftLog(NSString *format, ...) {
+  if (!_IMKSwift_onLogging) return;
+  @autoreleasepool {
+    va_list args;
+    va_start(args, format);
+    NSString *message = [[NSString alloc] initWithFormat:format arguments:args];
+    va_end(args);
+    const char *utf8 = [message UTF8String];
+    if (utf8) _IMKSwift_onLogging(utf8);
+    [message release];
+  }
+}
+
+/// Evaluates one of the diagnostic kill-switches above.  A switch that was
+/// never installed reads as "not disabled", which is the shipping behaviour.
+static BOOL IMKSwiftIsDisabled(BOOL (^_Nullable toggle)(void)) {
+  if (!toggle) return NO;
+  return toggle();
+}
 
 @implementation IMKInputSessionController
 
 // MARK: - Class Method: One-time Block Configuration (called from Swift at startup)
 
 + (void)IMKSwift_configureWithActivatingServer:(nullable void (^)(uintptr_t))blk {
-    if (_IMKSwift_onActivatingServer != blk) {
-        [_IMKSwift_onActivatingServer release];
-        _IMKSwift_onActivatingServer = [blk copy];
-    }
+  if (_IMKSwift_onActivatingServer != blk) {
+    [_IMKSwift_onActivatingServer release];
+    _IMKSwift_onActivatingServer = [blk copy];
+  }
 }
 + (void)IMKSwift_configureWithDeactivatingServer:(nullable void (^)(uintptr_t))blk {
-    if (_IMKSwift_onDeactivatingServer != blk) {
-        [_IMKSwift_onDeactivatingServer release];
-        _IMKSwift_onDeactivatingServer = [blk copy];
-    }
+  if (_IMKSwift_onDeactivatingServer != blk) {
+    [_IMKSwift_onDeactivatingServer release];
+    _IMKSwift_onDeactivatingServer = [blk copy];
+  }
 }
 + (void)IMKSwift_configureWithDealloc:(nullable void (^)(uintptr_t))blk {
-    if (_IMKSwift_onDealloc != blk) {
-        [_IMKSwift_onDealloc release];
-        _IMKSwift_onDealloc = [blk copy];
-    }
+  if (_IMKSwift_onDealloc != blk) {
+    [_IMKSwift_onDealloc release];
+    _IMKSwift_onDealloc = [blk copy];
+  }
 }
 + (void)IMKSwift_configureWithShowingPreferences:(nullable void (^)(uintptr_t))blk {
-    if (_IMKSwift_onShowingPreferences != blk) {
-        [_IMKSwift_onShowingPreferences release];
-        _IMKSwift_onShowingPreferences = [blk copy];
-    }
+  if (_IMKSwift_onShowingPreferences != blk) {
+    [_IMKSwift_onShowingPreferences release];
+    _IMKSwift_onShowingPreferences = [blk copy];
+  }
 }
 + (void)IMKSwift_configureWithHidingPallettes:(nullable void (^)(uintptr_t))blk {
-    if (_IMKSwift_onHidingPallettes != blk) {
-        [_IMKSwift_onHidingPallettes release];
-        _IMKSwift_onHidingPallettes = [blk copy];
-    }
+  if (_IMKSwift_onHidingPallettes != blk) {
+    [_IMKSwift_onHidingPallettes release];
+    _IMKSwift_onHidingPallettes = [blk copy];
+  }
 }
 + (void)IMKSwift_configureWithInputControllerWillClose:(nullable void (^)(uintptr_t))blk {
-    if (_IMKSwift_onInputControllerWillClose != blk) {
-        [_IMKSwift_onInputControllerWillClose release];
-        _IMKSwift_onInputControllerWillClose = [blk copy];
-    }
+  if (_IMKSwift_onInputControllerWillClose != blk) {
+    [_IMKSwift_onInputControllerWillClose release];
+    _IMKSwift_onInputControllerWillClose = [blk copy];
+  }
 }
 + (void)IMKSwift_configureWithProvidingSelectionRange:(nullable NSRange (^)(uintptr_t))blk {
-    if (_IMKSwift_onProvidingSelectionRange != blk) {
-        [_IMKSwift_onProvidingSelectionRange release];
-        _IMKSwift_onProvidingSelectionRange = [blk copy];
-    }
+  if (_IMKSwift_onProvidingSelectionRange != blk) {
+    [_IMKSwift_onProvidingSelectionRange release];
+    _IMKSwift_onProvidingSelectionRange = [blk copy];
+  }
 }
-+ (void)IMKSwift_configureWithProvidingIMEMenu:(nullable NSMenu * _Nullable (^)(uintptr_t))blk {
-    if (_IMKSwift_onProvidingIMEMenu != blk) {
-        [_IMKSwift_onProvidingIMEMenu release];
-        _IMKSwift_onProvidingIMEMenu = [blk copy];
-    }
++ (void)IMKSwift_configureWithProvidingIMEMenu:(nullable NSMenu *_Nullable (^)(uintptr_t))blk {
+  if (_IMKSwift_onProvidingIMEMenu != blk) {
+    [_IMKSwift_onProvidingIMEMenu release];
+    _IMKSwift_onProvidingIMEMenu = [blk copy];
+  }
 }
 + (void)IMKSwift_configureWithProvidingComposedString:(nullable id _Nullable (^)(uintptr_t))blk {
-    if (_IMKSwift_onProvidingComposedString != blk) {
-        [_IMKSwift_onProvidingComposedString release];
-        _IMKSwift_onProvidingComposedString = [blk copy];
-    }
+  if (_IMKSwift_onProvidingComposedString != blk) {
+    [_IMKSwift_onProvidingComposedString release];
+    _IMKSwift_onProvidingComposedString = [blk copy];
+  }
 }
 + (void)IMKSwift_configureWithAutoCommittingComposition:(nullable void (^)(uintptr_t))blk {
-    if (_IMKSwift_onAutoCommittingComposition != blk) {
-        [_IMKSwift_onAutoCommittingComposition release];
-        _IMKSwift_onAutoCommittingComposition = [blk copy];
-    }
+  if (_IMKSwift_onAutoCommittingComposition != blk) {
+    [_IMKSwift_onAutoCommittingComposition release];
+    _IMKSwift_onAutoCommittingComposition = [blk copy];
+  }
 }
 + (void)IMKSwift_configureWithProvidingRecognizedEvents:(nullable NSUInteger (^)(uintptr_t))blk {
-    if (_IMKSwift_onProvidingRecognizedEvents != blk) {
-        [_IMKSwift_onProvidingRecognizedEvents release];
-        _IMKSwift_onProvidingRecognizedEvents = [blk copy];
-    }
+  if (_IMKSwift_onProvidingRecognizedEvents != blk) {
+    [_IMKSwift_onProvidingRecognizedEvents release];
+    _IMKSwift_onProvidingRecognizedEvents = [blk copy];
+  }
 }
-+ (void)IMKSwift_configureWithHandlingGivenNullableEvent:(nullable BOOL (^)(uintptr_t, uintptr_t))blk {
-    if (_IMKSwift_onHandlingGivenNullableEvent != blk) {
-        [_IMKSwift_onHandlingGivenNullableEvent release];
-        _IMKSwift_onHandlingGivenNullableEvent = [blk copy];
-    }
++ (void)IMKSwift_configureWithHandlingGivenNullableEvent:(nullable BOOL (^)(uintptr_t,
+                                                                            uintptr_t))blk {
+  if (_IMKSwift_onHandlingGivenNullableEvent != blk) {
+    [_IMKSwift_onHandlingGivenNullableEvent release];
+    _IMKSwift_onHandlingGivenNullableEvent = [blk copy];
+  }
 }
-+ (void)IMKSwift_configureWithSettingObjCValue:(nullable void (^)(uintptr_t, intptr_t, uintptr_t))blk {
-    if (_IMKSwift_onSettingObjCValue != blk) {
-        [_IMKSwift_onSettingObjCValue release];
-        _IMKSwift_onSettingObjCValue = [blk copy];
-    }
++ (void)IMKSwift_configureWithSettingObjCValue:(nullable void (^)(uintptr_t, intptr_t,
+                                                                  uintptr_t))blk {
+  if (_IMKSwift_onSettingObjCValue != blk) {
+    [_IMKSwift_onSettingObjCValue release];
+    _IMKSwift_onSettingObjCValue = [blk copy];
+  }
+}
++ (void)IMKSwift_configureWithLoggingHandler:(nullable void (^)(const char *_Nullable))blk {
+  if (_IMKSwift_onLogging != blk) {
+    [_IMKSwift_onLogging release];
+    _IMKSwift_onLogging = [blk copy];
+  }
+}
++ (void)IMKSwift_configureWithServerControllerPruningDisabled:(nullable BOOL (^)(void))blk {
+  if (_IMKSwift_serverControllerPruningDisabled != blk) {
+    [_IMKSwift_serverControllerPruningDisabled release];
+    _IMKSwift_serverControllerPruningDisabled = [blk copy];
+  }
+}
++ (void)IMKSwift_configureWithEvictedClientInvalidationDisabled:(nullable BOOL (^)(void))blk {
+  if (_IMKSwift_evictedClientInvalidationDisabled != blk) {
+    [_IMKSwift_evictedClientInvalidationDisabled release];
+    _IMKSwift_evictedClientInvalidationDisabled = [blk copy];
+  }
+}
++ (void)IMKSwift_configureWithClientWrapperTerminationDisabled:(nullable BOOL (^)(void))blk {
+  if (_IMKSwift_clientWrapperTerminationDisabled != blk) {
+    [_IMKSwift_clientWrapperTerminationDisabled release];
+    _IMKSwift_clientWrapperTerminationDisabled = [blk copy];
+  }
+}
++ (void)IMKSwift_configureWithControllerDelayedDeallocationDisabled:(nullable BOOL (^)(void))blk {
+  if (_IMKSwift_controllerDelayedDeallocationDisabled != blk) {
+    [_IMKSwift_controllerDelayedDeallocationDisabled release];
+    _IMKSwift_controllerDelayedDeallocationDisabled = [blk copy];
+  }
 }
 
 // MARK: - Lifecycle
 
 - (void)dealloc {
-    if (_IMKSwift_onDealloc) {
-        @autoreleasepool {
-            _IMKSwift_onDealloc((uintptr_t)self);
-        }
+  if (_IMKSwift_onDealloc) {
+    @autoreleasepool {
+      _IMKSwift_onDealloc((uintptr_t)self);
     }
-    [self IMKSwift_cancelDelayedDealloc];
-    [super dealloc];
+  }
+  [self IMKSwift_cancelDelayedDealloc];
+  [super dealloc];
 }
 
 // MARK: - Stale Controller Pruning & Generation Tracking
 
-/// Removes the oldest stale controller from `IMKServer._private._controllers`
-/// when the dictionary has grown beyond a healthy threshold.
+/// Removes the oldest stale non-current controller from
+/// `IMKServer._private._controllers`, keeping that dictionary bounded.
 ///
 /// CpLk toggling causes IMKServer to create a new DO/XPC proxy on every
 /// activation.  Because `_controllers` is keyed by proxy memory address,
@@ -158,170 +227,219 @@ static void (^_IMKSwift_onSettingObjCValue)(uintptr_t, intptr_t, uintptr_t);
 /// `-sessionFinished:` will never fire.  This method evicts the oldest
 /// non-current controller, keeping the dictionary bounded.
 ///
+/// - Note: The historical `count` threshold was removed in Phase 113 follow-ups
+///   (`8a734b4d`); the eviction is now unconditional on every initialisation.
+///
 /// @param server         The `IMKServer` whose `_controllers` dictionary to prune.
 /// @param selfController The controller currently being initialised (excluded from eviction).
 + (void)IMKSwift_pruneStaleControllersOnServer:(IMKServer *)server
-                                  excludingSelf:(id)selfController {
-    @autoreleasepool {
-        id serverPvt = [server valueForKey:@"_private"];
-        NSMutableDictionary *ctls = [serverPvt valueForKey:@"_controllers"];
-        if (!ctls) return;
-
-        id currentCtl = [serverPvt valueForKey:@"_currentController"];
-        IMKControllerLifetimeTracker *tracker = [IMKControllerLifetimeTracker shared];
-
-        // Find the oldest controller (lowest generation) that is safe to evict.
-        id oldest = nil;
-        uint64_t oldestGen = UINT64_MAX;
-        for (id ctl in [ctls allValues]) {
-            if (ctl == currentCtl || ctl == selfController) continue;
-            uint64_t gen = [tracker generationForAddress:(uintptr_t)ctl];
-            if (gen < oldestGen) {
-                oldestGen = gen;
-                oldest = ctl;
-            }
-        }
-        if (!oldest) return;
-
-        // Find the dictionary key for the oldest controller and remove it.
-        for (id key in [ctls allKeys]) {
-            if ([ctls objectForKey:key] == oldest) {
-                [ctls removeObjectForKey:key];
-                if ([key respondsToSelector:@selector(invalidate)]) {
-                    [(id)key invalidate];
-                }
-                break;
-            }
-        }
+                                 excludingSelf:(id)selfController {
+  @autoreleasepool {
+    if (IMKSwiftIsDisabled(_IMKSwift_serverControllerPruningDisabled)) {
+      IMKSwiftLog(@"Prune: skipped (disableServerControllerPruning)");
+      return;
     }
+    id serverPvt = [server valueForKey:@"_private"];
+    NSMutableDictionary *ctls = [serverPvt valueForKey:@"_controllers"];
+    if (!ctls) return;
+
+    id currentCtl = [serverPvt valueForKey:@"_currentController"];
+    IMKControllerLifetimeTracker *tracker = [IMKControllerLifetimeTracker shared];
+    IMKSwiftLog(@"Prune: controllers=%lu current=%p self=%p", (unsigned long)[ctls count],
+                (void *)currentCtl, (void *)selfController);
+
+    // Find the oldest controller (lowest generation) that is safe to evict.
+    id oldest = nil;
+    uint64_t oldestGen = UINT64_MAX;
+    for (id ctl in [ctls allValues]) {
+      if (ctl == currentCtl || ctl == selfController) continue;
+      uint64_t gen = [tracker generationForAddress:(uintptr_t)ctl];
+      if (gen < oldestGen) {
+        oldestGen = gen;
+        oldest = ctl;
+      }
+    }
+    if (!oldest) {
+      IMKSwiftLog(@"Prune: nothing evictable (controllers=%lu)", (unsigned long)[ctls count]);
+      return;
+    }
+
+    // Find the dictionary key for the oldest controller and remove it.
+    for (id key in [ctls allKeys]) {
+      if ([ctls objectForKey:key] == oldest) {
+        uintptr_t evictedAddr = (uintptr_t)oldest;
+        uint64_t evictedGen = oldestGen;
+        [ctls removeObjectForKey:key];
+        // The invalidation of the registration's client connection is the
+        // aggressive half of the eviction, so it gets its own kill-switch:
+        // the entry still leaves `_controllers`, yet the client connection
+        // survives for whoever still holds it.
+        if (IMKSwiftIsDisabled(_IMKSwift_evictedClientInvalidationDisabled)) {
+          IMKSwiftLog(@"Prune: evicted addr=%p gen=%llu remaining=%lu (client connection kept)",
+                      (void *)evictedAddr, (unsigned long long)evictedGen,
+                      (unsigned long)[ctls count]);
+        } else {
+          if ([key respondsToSelector:@selector(invalidate)]) {
+            [(id)key invalidate];
+          }
+          IMKSwiftLog(@"Prune: evicted addr=%p gen=%llu remaining=%lu", (void *)evictedAddr,
+                      (unsigned long long)evictedGen, (unsigned long)[ctls count]);
+        }
+        break;
+      }
+    }
+  }
 }
 
 // MARK: - Parity / Generation
 
 + (uint64_t)IMKSwift_currentGeneration {
-    return [[IMKControllerLifetimeTracker shared] currentGeneration];
+  return [[IMKControllerLifetimeTracker shared] currentGeneration];
 }
 
 // MARK: - Initializer
 
-- (instancetype)initWithServer:(IMKServer *)server delegate:(nullable id)delegate client:(id)inputClient {
-    self = [super initWithServer:server delegate:delegate client:inputClient];
-    if (self) {
-        [[IMKControllerLifetimeTracker shared] trackController:self];
-        [IMKInputSessionController IMKSwift_pruneStaleControllersOnServer:server excludingSelf:self];
+- (instancetype)initWithServer:(IMKServer *)server
+                      delegate:(nullable id)delegate
+                        client:(id)inputClient {
+  self = [super initWithServer:server delegate:delegate client:inputClient];
+  if (self) {
+    [[IMKControllerLifetimeTracker shared] trackController:self];
+    IMKSwiftLog(@"ControllerInit: addr=%p gen=%llu", (void *)self,
+                (unsigned long long)[[IMKControllerLifetimeTracker shared]
+                    generationForAddress:(uintptr_t)self]);
+    // Which pair of IMK classes this process actually received.  The system
+    // picks them through `+subclass` at runtime (see the header's caveat), so
+    // this is the only way to tell a legacy server from a modern one at the
+    // scene of a bug report.
+    IMKSwiftLog(@"ServerFlavor: server=%@ client=%@", NSStringFromClass([server class]),
+                NSStringFromClass([inputClient class]));
+    [IMKInputSessionController IMKSwift_pruneStaleControllersOnServer:server excludingSelf:self];
 
-        SEL hookSel = @selector(onSuperConstructionSucceeded:delegate:client:);
-        if ([self respondsToSelector:hookSel]) {
-            @autoreleasepool {
-                NSMethodSignature *sig = [self methodSignatureForSelector:hookSel];
-                NSInvocation *inv = [NSInvocation invocationWithMethodSignature:sig];
-                [inv setSelector:hookSel];
-                [inv setTarget:self];
-                [inv setArgument:&server atIndex:2];
-                [inv setArgument:&delegate atIndex:3];
-                [inv setArgument:&inputClient atIndex:4];
-                [inv invoke];
-            }
-        }
+    SEL hookSel = @selector(onSuperConstructionSucceeded:delegate:client:);
+    if ([self respondsToSelector:hookSel]) {
+      @autoreleasepool {
+        NSMethodSignature *sig = [self methodSignatureForSelector:hookSel];
+        NSInvocation *inv = [NSInvocation invocationWithMethodSignature:sig];
+        [inv setSelector:hookSel];
+        [inv setTarget:self];
+        [inv setArgument:&server atIndex:2];
+        [inv setArgument:&delegate atIndex:3];
+        [inv setArgument:&inputClient atIndex:4];
+        [inv invoke];
+      }
     }
-    return self;
+  }
+  return self;
 }
 
 // MARK: - IMKInputController Overrides (dispatch via class-level static blocks)
 
 - (void)activateServer:(id)sender {
-    [self IMKSwift_cancelDelayedDealloc];
-    if (_IMKSwift_onActivatingServer) {
-        @autoreleasepool {
-            _IMKSwift_onActivatingServer((uintptr_t)self);
-        }
+  BOOL clientTerminatedBefore =
+      [objc_getAssociatedObject(self, &kIMKSwiftClientTerminatedKey) boolValue];
+  IMKSwiftLog(@"ActivateServer: addr=%p gen=%llu clientTerminatedBefore=%@", (void *)self,
+              (unsigned long long)[[IMKControllerLifetimeTracker shared]
+                  generationForAddress:(uintptr_t)self],
+              clientTerminatedBefore ? @"YES" : @"NO");
+  [self IMKSwift_cancelDelayedDealloc];
+  if (_IMKSwift_onActivatingServer) {
+    @autoreleasepool {
+      _IMKSwift_onActivatingServer((uintptr_t)self);
     }
+  }
 }
 
 - (void)deactivateServer:(id)sender {
-    if (_IMKSwift_onDeactivatingServer) {
-        @autoreleasepool {
-            _IMKSwift_onDeactivatingServer((uintptr_t)self);
-        }
+  IMKSwiftLog(@"DeactivateServer: addr=%p gen=%llu", (void *)self,
+              (unsigned long long)[[IMKControllerLifetimeTracker shared]
+                  generationForAddress:(uintptr_t)self]);
+  if (_IMKSwift_onDeactivatingServer) {
+    @autoreleasepool {
+      _IMKSwift_onDeactivatingServer((uintptr_t)self);
     }
-    [self IMKSwift_scheduleDelayedDeallocAfterDelay:3.0];
+  }
+  [self IMKSwift_scheduleDelayedDeallocAfterDelay:3.0];
 }
 
 - (void)showPreferences:(nullable id)sender {
-    if (_IMKSwift_onShowingPreferences) {
-        @autoreleasepool {
-            _IMKSwift_onShowingPreferences((uintptr_t)self);
-        }
+  if (_IMKSwift_onShowingPreferences) {
+    @autoreleasepool {
+      _IMKSwift_onShowingPreferences((uintptr_t)self);
     }
+  }
 }
 
 - (void)hidePalettes {
-    if (_IMKSwift_onHidingPallettes) {
-        @autoreleasepool {
-            _IMKSwift_onHidingPallettes((uintptr_t)self);
-        }
+  if (_IMKSwift_onHidingPallettes) {
+    @autoreleasepool {
+      _IMKSwift_onHidingPallettes((uintptr_t)self);
     }
+  }
 }
 
 - (void)inputControllerWillClose {
-    if (_IMKSwift_onInputControllerWillClose) {
-        @autoreleasepool {
-            _IMKSwift_onInputControllerWillClose((uintptr_t)self);
-        }
+  if (_IMKSwift_onInputControllerWillClose) {
+    @autoreleasepool {
+      _IMKSwift_onInputControllerWillClose((uintptr_t)self);
     }
+  }
 }
 
 - (NSRange)selectionRange {
-    if (_IMKSwift_onProvidingSelectionRange) return _IMKSwift_onProvidingSelectionRange((uintptr_t)self);
-    return NSMakeRange(NSNotFound, 0);
+  if (_IMKSwift_onProvidingSelectionRange)
+    return _IMKSwift_onProvidingSelectionRange((uintptr_t)self);
+  return NSMakeRange(NSNotFound, 0);
 }
 
 - (nullable NSMenu *)menu {
-    if (_IMKSwift_onProvidingIMEMenu) {
-        NSMenu *menu = nil;
-        @autoreleasepool {
-            menu = [_IMKSwift_onProvidingIMEMenu((uintptr_t)self) retain];
-        }
-        return [menu autorelease];
+  if (_IMKSwift_onProvidingIMEMenu) {
+    NSMenu *menu = nil;
+    @autoreleasepool {
+      menu = [_IMKSwift_onProvidingIMEMenu((uintptr_t)self) retain];
     }
-    return [[NSMenu new] autorelease];
+    return [menu autorelease];
+  }
+  return [[NSMenu new] autorelease];
 }
 
 - (nullable id)composedString:(id)sender {
-    if (_IMKSwift_onProvidingComposedString) {
-        id result = nil;
-        @autoreleasepool {
-            result = [_IMKSwift_onProvidingComposedString((uintptr_t)self) retain];
-        }
-        return [result autorelease];
+  if (_IMKSwift_onProvidingComposedString) {
+    id result = nil;
+    @autoreleasepool {
+      result = [_IMKSwift_onProvidingComposedString((uintptr_t)self) retain];
     }
-    return nil;
+    return [result autorelease];
+  }
+  return nil;
 }
 
 - (void)commitComposition:(id)sender {
-    if (_IMKSwift_onAutoCommittingComposition) {
-        @autoreleasepool {
-            _IMKSwift_onAutoCommittingComposition((uintptr_t)self);
-        }
+  if (_IMKSwift_onAutoCommittingComposition) {
+    @autoreleasepool {
+      _IMKSwift_onAutoCommittingComposition((uintptr_t)self);
     }
+  }
 }
 
 - (NSUInteger)recognizedEvents:(id)sender {
-    if (_IMKSwift_onProvidingRecognizedEvents) return _IMKSwift_onProvidingRecognizedEvents((uintptr_t)self);
-    return 0;
+  if (_IMKSwift_onProvidingRecognizedEvents)
+    return _IMKSwift_onProvidingRecognizedEvents((uintptr_t)self);
+  return 0;
 }
 
 - (BOOL)handleEvent:(nullable NSEvent *)event client:(id)sender {
-    if (_IMKSwift_onHandlingGivenNullableEvent) return _IMKSwift_onHandlingGivenNullableEvent((uintptr_t)event, (uintptr_t)self);
-    return NO;
+  if (_IMKSwift_onHandlingGivenNullableEvent)
+    return _IMKSwift_onHandlingGivenNullableEvent((uintptr_t)event, (uintptr_t)self);
+  return NO;
 }
 
 - (void)setValue:(nullable id)value forTag:(NSInteger)tag client:(id)sender {
-    if (_IMKSwift_onSettingObjCValue) {
-        @autoreleasepool {
-            _IMKSwift_onSettingObjCValue((uintptr_t)value, (intptr_t)tag, (uintptr_t)self);
-        }
+  if (_IMKSwift_onSettingObjCValue) {
+    @autoreleasepool {
+      _IMKSwift_onSettingObjCValue((uintptr_t)value, (intptr_t)tag, (uintptr_t)self);
     }
+  }
 }
 
 // MARK: - Private: Deferred Dealloc
@@ -331,55 +449,75 @@ static void (^_IMKSwift_onSettingObjCValue)(uintptr_t, intptr_t, uintptr_t);
 /// duration of the delay.  When the timer fires, the timer releases its retain.
 /// If no other objects hold a reference, `-dealloc` is triggered by the system.
 - (void)IMKSwift_scheduleDelayedDeallocAfterDelay:(NSTimeInterval)delay {
-    [NSObject cancelPreviousPerformRequestsWithTarget:self
-                                             selector:@selector(IMKSwift_delayedDealloc)
-                                               object:nil];
-    [self performSelector:@selector(IMKSwift_delayedDealloc)
-               withObject:nil
-               afterDelay:delay];
+  [NSObject cancelPreviousPerformRequestsWithTarget:self
+                                           selector:@selector(IMKSwift_delayedDealloc)
+                                             object:nil];
+  if (IMKSwiftIsDisabled(_IMKSwift_controllerDelayedDeallocationDisabled)) {
+    IMKSwiftLog(@"DelayedDealloc: not scheduled (disableControllerDelayedDeallocation) addr=%p",
+                (void *)self);
+    return;
+  }
+  [self performSelector:@selector(IMKSwift_delayedDealloc) withObject:nil afterDelay:delay];
 }
 
 /// Cancels any pending delayed dealloc.
 - (void)IMKSwift_cancelDelayedDealloc {
-    [NSObject cancelPreviousPerformRequestsWithTarget:self
-                                             selector:@selector(IMKSwift_delayedDealloc)
-                                               object:nil];
+  [NSObject cancelPreviousPerformRequestsWithTarget:self
+                                           selector:@selector(IMKSwift_delayedDealloc)
+                                             object:nil];
 }
 
 /// Triggers the dealloc callback, then terminates the client wrapper to release
 /// the underlying XPC connection.  Block ivars are class-level static — no
 /// per-instance release needed.
 - (void)IMKSwift_delayedDealloc {
-    @autoreleasepool {
-        if (_IMKSwift_onDealloc) _IMKSwift_onDealloc((uintptr_t)self);
-        // Terminate the client wrapper so that IMK's global wrapper cache
-        // and the underlying XPC connection are released promptly.  The controller
-        // shell may persist in _controllers until the next prune cycle, but the
-        // heavy XPC resources (~440 bytes per connection) are freed now.
-        id<IMKTextInput> clientProxy = [self client];
-        if (clientProxy) {
-            // macOS 15 Sequoia split IPMDServerClientWrapper into Modern / Legacy subclasses.
-            // Try both variants, then fall back to the undecorated name for ≤10.15.
-            Class wrapperClass = nil;
-            for (NSString *name in @[
-                @"_IPMDServerClientWrapperModern",
-                @"_IPMDServerClientWrapperLegacy",
-                @"IPMDServerClientWrapper"
-            ]) {
-                wrapperClass = NSClassFromString(name);
-                if (wrapperClass) break;
-            }
-            if (wrapperClass) {
-                if ([wrapperClass respondsToSelector:@selector(terminateForClientXPCConn:)]) {
-                    [wrapperClass terminateForClientXPCConn:clientProxy];
-                } else if ([wrapperClass respondsToSelector:@selector(terminateForClientDOProxy:)]) {
-                    [wrapperClass terminateForClientDOProxy:clientProxy];
-                } else if ([wrapperClass respondsToSelector:@selector(terminateForClient:)]) {
-                    [wrapperClass terminateForClient:clientProxy];
-                }
-            }
-        }
+  @autoreleasepool {
+    // Re-checked here as well, so that a timer scheduled before the toggle was
+    // flipped does not slip through.
+    if (IMKSwiftIsDisabled(_IMKSwift_controllerDelayedDeallocationDisabled)) {
+      IMKSwiftLog(@"DelayedDealloc: skipped (disableControllerDelayedDeallocation) addr=%p",
+                  (void *)self);
+      return;
     }
+    objc_setAssociatedObject(self, &kIMKSwiftClientTerminatedKey, @YES,
+                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    IMKSwiftLog(@"DelayedDealloc: addr=%p gen=%llu", (void *)self,
+                (unsigned long long)[[IMKControllerLifetimeTracker shared]
+                    generationForAddress:(uintptr_t)self]);
+    if (_IMKSwift_onDealloc) _IMKSwift_onDealloc((uintptr_t)self);
+    // Terminate the client wrapper so that IMK's global wrapper cache
+    // and the underlying XPC connection are released promptly.  The controller
+    // shell may persist in _controllers until the next prune cycle, but the
+    // heavy XPC resources (~440 bytes per connection) are freed now.
+    id<IMKTextInput> clientProxy = [self client];
+    if (clientProxy) {
+      if (IMKSwiftIsDisabled(_IMKSwift_clientWrapperTerminationDisabled)) {
+        IMKSwiftLog(
+            @"DelayedDealloc: client wrapper kept (disableClientWrapperTermination) addr=%p",
+            (void *)self);
+      } else {
+        // macOS 15 Sequoia split IPMDServerClientWrapper into Modern / Legacy subclasses.
+        // Try both variants, then fall back to the undecorated name for ≤10.15.
+        Class wrapperClass = nil;
+        for (NSString *name in @[
+               @"_IPMDServerClientWrapperModern", @"_IPMDServerClientWrapperLegacy",
+               @"IPMDServerClientWrapper"
+             ]) {
+          wrapperClass = NSClassFromString(name);
+          if (wrapperClass) break;
+        }
+        if (wrapperClass) {
+          if ([wrapperClass respondsToSelector:@selector(terminateForClientXPCConn:)]) {
+            [wrapperClass terminateForClientXPCConn:clientProxy];
+          } else if ([wrapperClass respondsToSelector:@selector(terminateForClientDOProxy:)]) {
+            [wrapperClass terminateForClientDOProxy:clientProxy];
+          } else if ([wrapperClass respondsToSelector:@selector(terminateForClient:)]) {
+            [wrapperClass terminateForClient:clientProxy];
+          }
+        }
+      }
+    }
+  }
 }
 
 // MARK: - Client Proxy Methods (safe forwarding, no Swift ARC on IMKTextInput)
@@ -388,175 +526,182 @@ static void (^_IMKSwift_onSettingObjCValue)(uintptr_t, intptr_t, uintptr_t);
 /// No-ops (or returns `nil`/`CGRectNull`) when `[self client]` is `NULL`.
 
 - (BOOL)hasClient {
-    id<IMKTextInput> client = [self client];
-    return client != nil;
+  id<IMKTextInput> client = [self client];
+  return client != nil;
 }
 
 - (void)clientTextInsertionWith:(NSString *)text replacementRange:(NSRange)range {
-    id<IMKTextInput> client = [self client];
-    if (!client) return;
-    @autoreleasepool {
-        [client insertText:text replacementRange:range];
-    }
+  id<IMKTextInput> client = [self client];
+  if (!client) return;
+  @autoreleasepool {
+    [client insertText:text replacementRange:range];
+  }
 }
 
-- (void)clientMarkedTextSetupWith:(NSAttributedString *)text selectionRange:(NSRange)selRange replacementRange:(NSRange)repRange {
-    id<IMKTextInput> client = [self client];
-    if (!client) return;
-    @autoreleasepool {
-        [client setMarkedText:text selectionRange:selRange replacementRange:repRange];
-    }
+- (void)clientMarkedTextSetupWith:(NSAttributedString *)text
+                   selectionRange:(NSRange)selRange
+                 replacementRange:(NSRange)repRange {
+  id<IMKTextInput> client = [self client];
+  if (!client) return;
+  @autoreleasepool {
+    [client setMarkedText:text selectionRange:selRange replacementRange:repRange];
+  }
 }
 
 - (nullable NSString *)clientBundleIdentifier {
-    id<IMKTextInput> client = [self client];
-    if (!client) return nil;
-    NSString *result = nil;
-    @autoreleasepool {
-        result = [[client bundleIdentifier] retain];
-    }
-    return [result autorelease];
+  id<IMKTextInput> client = [self client];
+  if (!client) return nil;
+  NSString *result = nil;
+  @autoreleasepool {
+    result = [[client bundleIdentifier] retain];
+  }
+  return [result autorelease];
 }
 
 - (void)clientSelectModeWithModeIdentifier:(NSString *)mode {
-    id<IMKTextInput> client = [self client];
-    if (!client) return;
-    @autoreleasepool {
-        [client selectInputMode:mode];
-    }
+  id<IMKTextInput> client = [self client];
+  if (!client) return;
+  @autoreleasepool {
+    [client selectInputMode:mode];
+  }
 }
 
 - (void)clientOverrideKeyboardWithName:(NSString *)name {
-    id<IMKTextInput> client = [self client];
-    if (!client) return;
-    @autoreleasepool {
-        [client overrideKeyboardWithKeyboardNamed:name];
-    }
+  id<IMKTextInput> client = [self client];
+  if (!client) return;
+  @autoreleasepool {
+    [client overrideKeyboardWithKeyboardNamed:name];
+  }
 }
 
-- (nullable NSDictionary *)clientAttributesForCharacterIndexAtU16Pos:(NSUInteger)idx lineHeightRectangle:(NSRect *)rect {
-    id<IMKTextInput> client = [self client];
-    if (!client) return nil;
-    NSDictionary *result = nil;
-    @autoreleasepool {
-        result = [[client attributesForCharacterIndex:idx lineHeightRectangle:rect] retain];
-    }
-    return [result autorelease];
+- (nullable NSDictionary *)clientAttributesForCharacterIndexAtU16Pos:(NSUInteger)idx
+                                                 lineHeightRectangle:(NSRect *)rect {
+  id<IMKTextInput> client = [self client];
+  if (!client) return nil;
+  NSDictionary *result = nil;
+  @autoreleasepool {
+    result = [[client attributesForCharacterIndex:idx lineHeightRectangle:rect] retain];
+  }
+  return [result autorelease];
 }
 
 - (CGRect)clientLineHeightRectForU16CursorPos:(NSUInteger)u16Cursor {
-    id<IMKTextInput> client = [self client];
-    if (!client) return CGRectNull;
-    CGRect result = CGRectMake(0, 0, 0.114, 0.514);
-    @autoreleasepool {
-        NSInteger cursor = (NSInteger)u16Cursor;
-        while (result.origin.x == 0 && result.origin.y == 0 && cursor >= 0) {
-            [client attributesForCharacterIndex:(NSUInteger)cursor lineHeightRectangle:&result];
-            cursor--;
-        }
+  id<IMKTextInput> client = [self client];
+  if (!client) return CGRectNull;
+  CGRect result = CGRectMake(0, 0, 0.114, 0.514);
+  @autoreleasepool {
+    NSInteger cursor = (NSInteger)u16Cursor;
+    while (result.origin.x == 0 && result.origin.y == 0 && cursor >= 0) {
+      [client attributesForCharacterIndex:(NSUInteger)cursor lineHeightRectangle:&result];
+      cursor--;
     }
-    return result;
+  }
+  return result;
 }
 
 // MARK: - Core IMKTextInput (remainder)
 
-- (CGRect)clientFirstRectForCharacterRange:(NSRange)range actualRange:(nullable NSRange *)actualRangeOut {
-    id<IMKTextInput> client = [self client];
-    if (!client) return CGRectNull;
-    return [client firstRectForCharacterRange:range actualRange:actualRangeOut];
+- (CGRect)clientFirstRectForCharacterRange:(NSRange)range
+                               actualRange:(nullable NSRange *)actualRangeOut {
+  id<IMKTextInput> client = [self client];
+  if (!client) return CGRectNull;
+  return [client firstRectForCharacterRange:range actualRange:actualRangeOut];
 }
 
-- (nullable NSString *)clientStringFromRange:(NSRange)range actualRange:(nullable NSRange *)actualRangeOut {
-    id<IMKTextInput> client = [self client];
-    if (!client) return nil;
-    NSString *result = nil;
-    @autoreleasepool {
-        result = [[client stringFromRange:range actualRange:actualRangeOut] retain];
-    }
-    return [result autorelease];
+- (nullable NSString *)clientStringFromRange:(NSRange)range
+                                 actualRange:(nullable NSRange *)actualRangeOut {
+  id<IMKTextInput> client = [self client];
+  if (!client) return nil;
+  NSString *result = nil;
+  @autoreleasepool {
+    result = [[client stringFromRange:range actualRange:actualRangeOut] retain];
+  }
+  return [result autorelease];
 }
 
 - (nullable NSString *)clientUniqueIdentifierString {
-    id<IMKTextInput> client = [self client];
-    if (!client) return nil;
-    NSString *result = nil;
-    @autoreleasepool {
-        result = [[client uniqueClientIdentifierString] retain];
-    }
-    return [result autorelease];
+  id<IMKTextInput> client = [self client];
+  if (!client) return nil;
+  NSString *result = nil;
+  @autoreleasepool {
+    result = [[client uniqueClientIdentifierString] retain];
+  }
+  return [result autorelease];
 }
 
 - (BOOL)clientSupportsUnicode {
-    id<IMKTextInput> client = [self client];
-    if (!client) return NO;
-    return [client supportsUnicode];
+  id<IMKTextInput> client = [self client];
+  if (!client) return NO;
+  return [client supportsUnicode];
 }
 
 - (nullable NSArray *)clientValidAttributesForMarkedText {
-    id<IMKTextInput> client = [self client];
-    if (!client) return nil;
-    NSArray *result = nil;
-    @autoreleasepool {
-        result = [[client validAttributesForMarkedText] retain];
-    }
-    return [result autorelease];
+  id<IMKTextInput> client = [self client];
+  if (!client) return nil;
+  NSArray *result = nil;
+  @autoreleasepool {
+    result = [[client validAttributesForMarkedText] retain];
+  }
+  return [result autorelease];
 }
 
-- (NSInteger)clientCharacterIndexForPoint:(CGPoint)point tracking:(NSInteger)tracking inMarkedRange:(nullable BOOL *)inMarkedRange {
-    id<IMKTextInput> client = [self client];
-    if (!client) return NSNotFound;
-    return [client characterIndexForPoint:point tracking:tracking inMarkedRange:inMarkedRange];
+- (NSInteger)clientCharacterIndexForPoint:(CGPoint)point
+                                 tracking:(NSInteger)tracking
+                            inMarkedRange:(nullable BOOL *)inMarkedRange {
+  id<IMKTextInput> client = [self client];
+  if (!client) return NSNotFound;
+  return [client characterIndexForPoint:point tracking:tracking inMarkedRange:inMarkedRange];
 }
 
 - (NSInteger)clientLength {
-    id<IMKTextInput> client = [self client];
-    if (!client) return 0;
-    return [client length];
+  id<IMKTextInput> client = [self client];
+  if (!client) return 0;
+  return [client length];
 }
 
 - (nullable NSAttributedString *)clientAttributedSubstringFromRange:(NSRange)range {
-    id<IMKTextInput> client = [self client];
-    if (!client) return nil;
-    NSAttributedString *result = nil;
-    @autoreleasepool {
-        result = [[client attributedSubstringFromRange:range] retain];
-    }
-    return [result autorelease];
+  id<IMKTextInput> client = [self client];
+  if (!client) return nil;
+  NSAttributedString *result = nil;
+  @autoreleasepool {
+    result = [[client attributedSubstringFromRange:range] retain];
+  }
+  return [result autorelease];
 }
 
 - (NSRange)clientMarkedRange {
-    id<IMKTextInput> client = [self client];
-    if (!client) return NSMakeRange(NSNotFound, 0);
-    return [client markedRange];
+  id<IMKTextInput> client = [self client];
+  if (!client) return NSMakeRange(NSNotFound, 0);
+  return [client markedRange];
 }
 
 - (NSRange)clientSelectedRange {
-    id<IMKTextInput> client = [self client];
-    if (!client) return NSMakeRange(NSNotFound, 0);
-    return [client selectedRange];
+  id<IMKTextInput> client = [self client];
+  if (!client) return NSMakeRange(NSNotFound, 0);
+  return [client selectedRange];
 }
 
 - (int32_t)clientWindowLevel {
-    id<IMKTextInput> client = [self client];
-    if (!client) return MAX(CGShieldingWindowLevel() - 3, 0);
-    return (int32_t)[client windowLevel];
+  id<IMKTextInput> client = [self client];
+  if (!client) return MAX(CGShieldingWindowLevel() - 3, 0);
+  return (int32_t)[client windowLevel];
 }
 
 - (BOOL)clientSupportsProperty:(unsigned int)property {
-    id<IMKTextInput> client = [self client];
-    if (!client) return NO;
-    return [client supportsProperty:property];
+  id<IMKTextInput> client = [self client];
+  if (!client) return NO;
+  return [client supportsProperty:property];
 }
 
 // MARK: - IMKTextInput_NSAppearance
 
 - (BOOL)clientIsDarkMode {
-    id client = [self client];
-    if (!client) return NO;
-    if (![client respondsToSelector:@selector(windowEffectiveAppearance)]) return NO;
-    id appearance = [client performSelector:@selector(windowEffectiveAppearance)];
-    if (!appearance) return NO;
-    return [[appearance valueForKey:@"name"] containsString:@"Dark"];
+  id client = [self client];
+  if (!client) return NO;
+  if (![client respondsToSelector:@selector(windowEffectiveAppearance)]) return NO;
+  id appearance = [client performSelector:@selector(windowEffectiveAppearance)];
+  if (!appearance) return NO;
+  return [[appearance valueForKey:@"name"] containsString:@"Dark"];
 }
 
 @end

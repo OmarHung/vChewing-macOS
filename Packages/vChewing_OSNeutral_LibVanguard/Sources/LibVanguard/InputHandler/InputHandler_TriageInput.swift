@@ -39,29 +39,29 @@ extension InputHandlerProtocol {
     // Enter／數字鍵／字母鍵／編輯鍵不屬觸發集合。
     // 前後方向鍵不在此列——注拼槽有未完成讀音時由 handleForward/handleBackward
     // 的專屬規則接管（狂拼開窗或 error 退回）。
-    // 空格觸發固化時記錄本拍「空格已用於插入讀音」：後續的 kSpace 分診依此直接
-    // 消費本拍空格（不再輪替、不再遞交、不生成空格字符）——未完成讀音存在時，
-    // 空格語義為「把讀音插入組字器」而非「輪替候選」。
-    // 固化後注拼槽仍有未完成讀音（α 查無候選、或固化失敗）時，直接消費本拍空格、
-    // 以新狀態刷新——避免空格流入注拼槽（拼音模式下空格＝中性聲調，其後的獨立聲調
+    // 空白鍵觸發固化時記錄本拍「空白鍵已用於插入讀音」：後續的 kSpace 分診依此直接
+    // 消費本拍空白鍵（不再輪替、不再遞交、不生成空白字符）——未完成讀音存在時，
+    // 空白鍵語義為「把讀音插入組字器」而非「輪替候選」。
+    // 固化後注拼槽仍有未完成讀音（α 查無候選、或固化失敗）時，直接消費本拍空白字元、
+    // 以新狀態刷新——避免空白鍵流入注拼槽（拼音模式下空白鍵＝中性聲調，其後的獨立聲調
     // 處理會清空注拼槽、丟失前方的簡拼整詞上下文）。
     //
-    // ★ P260：**注音側之空格不屬固化觸發集合**。注音之五個聲調鍵為 `3`／`4`／`6`／`7`
-    // 與**空格**（陰平）——若把空格挪作「固化前方讀音」之用，陰平即無從指定（實測：
-    // 狂打下按空格所得者為**無調讀音桶**、由語言模型自行挑調，故陰平候選恆被高分之上聲／
-    // 去聲候選擠下）。拼音側之空格本即「無調確認組字」之鍵（`shouldUseToneInsensitivePinyinLookup`），
+    // ★ P260：**注音側之空白鍵不屬固化觸發集合**。注音之五個聲調鍵為 `3`／`4`／`6`／`7`
+    // 與**空白鍵**（陰平）——若把空白鍵挪作「固化前方讀音」之用，陰平即無從指定（實測：
+    // 狂打下按空白鍵所得者為**無調讀音桶**、由語言模型自行挑調，故陰平候選恆被高分之上聲／
+    // 去聲候選擠下）。拼音側之空白鍵本即「無調確認組字」之鍵（`shouldUseToneInsensitivePinyinLookup`），
     // 語義不變。固化另有 Tab／Enter／標點三條路（見 `handlePunctuation` 與同檔之 kTab 分支、
     // 以及 `Typewriter_BPMFFullMatch` 之 Enter 分支）。
     // ★ P273：**回退與注音狂打並存時，空白鍵重歸注音語義**——惟其理據與純注音狂打不同。
-    // 注音之空格在此情境下並非「陰平鍵」：讀音素材住混打緩衝區，聲調一律經數字鍵進入
-    // （`su3`＝ㄋㄧˇ），故無「空格被挪作固化即陰平無從指定」之虞；反之若不特別處置，本鍵
-    // 將落入混打之「整段緩衝 ＋ 半形空格」而令該讀音被當英文遞交（正是 P258 之病灶）。
+    // 注音之空白鍵在此情境下並非「陰平鍵」：讀音素材住混打緩衝區，聲調一律經數字鍵進入
+    // （`su3`＝ㄋㄧˇ），故無「空白鍵被挪作固化即陰平無從指定」之虞；反之若不特別處置，本鍵
+    // 將落入混打之「整段緩衝 ＋ 半形空白字元」而令該讀音被當英文遞交（正是 P258 之病灶）。
     // 其歸屬（陰平確認抑或 Shift 之 ASCII 逃生口）一律由 `MixedAlnumSpaceDuty` 判定；
     // 凡該層已接管本鍵者，本固化塊即整塊讓位（見下）。
     let spaceSolidifiesFuriousFront = isPinyinFuriousTypingModeEffective
       || mixedAlnumZhuyinFuriousInEffect
     // ★ P280：並存態下之空白鍵**兩種歸屬皆屬混打層**——不帶修飾鍵者為陰平確認鍵、帶 Shift 者
-    // 為「整段 ASCII ＋ 半形空格」之逃生口（見 `MixedAlnumSpaceDuty`）。故凡混打層已接管本鍵者
+    // 為「整段 ASCII ＋ 半形空白字元」之逃生口（見 `MixedAlnumSpaceDuty`）。故凡混打層已接管本鍵者
     // （`isOwnedByMixedAlnumLayer`），本塊**整塊讓位**：既不固化其讀音、亦不早退，逕交下方之
     // 鍵碼分診，由打字機完成確認或遞交。若只令 Shift+Space「非陰平鍵」，本塊旋即改以其為固化
     // 觸發鍵而整拍消費，逃生口仍無從觸發。
@@ -75,12 +75,12 @@ extension InputHandlerProtocol {
        (input.isSpace && spaceSolidifiesFuriousFront) || input.isPageUp || input.isPageDown
        || input.isCursorClockLeft || input.isCursorClockRight {
       // ★ P273 之修正（事主實機回報）：**混打側之待調讀音不在此固化**。
-      // 注音狂打之空格語義為「以陰平聲調確認前方讀音」（`P258`／`P260`）——惟此前本塊
-      // 對混打側一律先固化（只插**無調**聲調桶），遂令空格之聲調確認失效（實測：`su`
-      // 按空格得 `["ㄋㄧ"]` 之無調桶，而非 `ㄋㄧ`）。故凡緩衝恰為一個待確認之讀音者，
+      // 注音狂打之空白鍵語義為「以陰平聲調確認前方讀音」（`P258`／`P260`）——惟此前本塊
+      // 對混打側一律先固化（只插**無調**聲調桶），遂令空白鍵之聲調確認失效（實測：`su`
+      // 按空白鍵得 `["ㄋㄧ"]` 之無調桶，而非 `ㄋㄧ`）。故凡緩衝恰為一個待確認之讀音者，
       // 本塊**讓位**：不固化、不早退，逕交下方之鍵碼分診，由打字機以該讀音之**整組聲調
       // 變體桶**完成確認（見 `MixedAlphanumericalTypewriter` 之
-      // `confirmMixedAlnumReadingWithLevelTone`）——與純注音狂打之固化同源。
+      // `confirmMixedAlnumReadingWithFirstTone`）——與純注音狂打之固化同源。
       // 讓位之判準即 `MixedAlnumSpaceDuty`（單一正本），免兩處漂移。
       let solidified = solidifyFuriousFrontReading()
       // 固化成功之判讀依素材之住處分流：拼音側之素材即注拼槽內之字母流 ⇒ 固化成功即令其
@@ -104,7 +104,7 @@ extension InputHandlerProtocol {
       // 本塊既以 `!spaceDuty.isOwnedByMixedAlnumLayer` 為前提，混打側之待調讀音（與 Shift 之
       // 逃生口）一概不至此處 ⇒ 本條件無須再問「是否陰平鍵」。
       if input.isSpace, hasFuriousFrontPending {
-        // 固化不成（如 α 查無候選）⇒ 保留本鍵、逕以新狀態刷新，避免空格流入注拼槽。
+        // 固化不成（如 α 查無候選）⇒ 保留本鍵、逕以新狀態刷新，避免空白鍵流入注拼槽。
         session.switchState(generateStateOfInputting())
         return true
       }
@@ -172,39 +172,45 @@ extension InputHandlerProtocol {
         default: break
         }
       case .kSpace:
-        // 倘若沒有在偏好設定內將 Space 空格鍵設為選字窗呼叫用鍵的話………
-        // 空格字符輸入行為處理。
+        // 倘若沒有在偏好設定內將 Space 空白鍵設為選字窗呼叫用鍵的話………
+        // 空白字符輸入行為處理。
         switch state.type {
         case .ofEmpty:
           if !input.isHoldingAny([.option, .control, .command]) {
-            // 一般打字且組字區為空時：不帶 Shift 的空格鍵恆插入半形空格；
-            // 帶 Shift 者之寬度由偏好決定（預設全形，與舊行為一致）。
+            // ★ P294：組字區**徹底為空**時，空白鍵之語義一概與值 0 看齊——即「無內容可遞交，
+            //   故逕出空白字元」：Space 恆出半形、Shift+Space 之寬度由
+            //   `specifyShiftSpaceKeyBehavior4EmptyState` 決定（預設全形）。此為**不分偏好值**之
+            //   定則（事主指示）：值 `-1`（「插入空白字元（內文組字區）」）於此**不**插入
+            //   `_SPACE_HW`／`_SPACE_FW`——否則「空組字區按一下空白鍵」會留下一個待遞交之空白
+            //   節點，令同一顆鍵在第一拍與第二拍分屬兩種語義（實測會生出「一次遞交兩個空白
+            //   字元」之怪異結果）。插入語義只在**組字區已有內容**時成立（見下方 `.ofInputting`
+            //   之 -1 分支）。
             let wantsHalfWidth = !input.isShiftHeld
               || prefs.specifyShiftSpaceKeyBehavior4EmptyState
             session.switchState(State.ofCommitting(textToCommit: wantsHalfWidth ? " " : "　"))
             return true
           }
         case .ofInputting:
-          // 空格已用於狂拼讀音固化：本拍空格被「插入讀音」消費——不再輪替候選、
-          // 亦不落入後續的空格遞交路徑（否則會生成空格字符拆斷組字區、使之直接
-          // 遞交）。behavior==1 的「空格呼叫選字窗」由更早的 callCandidateState
+          // 空白鍵已用於狂拼讀音固化：本拍空白鍵被「插入讀音」消費——不再輪替候選、
+          // 亦不落入後續的空白鍵遞交路徑（否則會生成空白字符拆斷組字區、使之直接
+          // 遞交）。behavior==1 的「空白鍵呼叫選字窗」由更早的 callCandidateState
           // 提供、不受本守衛影響；此處以新狀態刷新顯示（清掉已失效的狂拼前方預覽窗）。
           if spaceSolidifiedFuriousReading {
             session.switchState(generateStateOfInputting())
             return true
           }
-          // ★ P273：回退與注音狂打並存時之空格已於本函式早段整拍消費（固化前方讀音），
+          // ★ P273：回退與注音狂打並存時之空白鍵已於本函式早段整拍消費（固化前方讀音），
           // 故本處所見之緩衝恆空 ⇒ 直落下方之送字邏輯，不繞經
-          // `MixedAlphanumericalTypewriter`（其空白鍵分支會再判一次「整段緩衝 ＋ 半形空格」）。
-          // 空格輪替守衛：注拼槽尚有未完成讀音時，停用空格輪替——未完成讀音存在時，
-          // 空格語義為「把讀音插入組字器」、不兼任候選輪替。
+          // `MixedAlphanumericalTypewriter`（其空白鍵分支會再判一次「整段緩衝 ＋ 半形空白字元」）。
+          // 空白鍵輪替守衛：注拼槽尚有未完成讀音時，停用空白鍵輪替——未完成讀音存在時，
+          // 空白鍵語義為「把讀音插入組字器」、不兼任候選輪替。
           // （拼音模式下 composer.isEmpty 涵蓋 romajiBuffer；注音模式涵蓋聲介韻調。）
-          let spaceRotationBanned = !composer.isEmpty
+          let spaceRevolutionBanned = !composer.isEmpty
           // 臉書等網站會攔截 Tab 鍵，所以用 Shift+Command+Space 對候選字詞做正向/反向輪替。
           // Space 鍵就地輪替候選字（對應 spaceKeyBehaviorAgainstICB == 2）。
-          if prefs.spaceKeyBehaviorAgainstICB == 2,
+          if effectiveSpaceKeyBehaviorAgainstICB == 2,
              input.keyModifierFlags.intersection([.control, .command, .option]).isEmpty,
-             !spaceRotationBanned {
+             !spaceRevolutionBanned {
             // 此時 Shift+Space 反向輪替，仿 Shift+Tab 行為。
             // SPACE 啟動的輪替一律套用 soft revolve，避免毀掉鄰近已覆寫節點。
             return revolveCandidate(
@@ -212,7 +218,11 @@ extension InputHandlerProtocol {
               softRevolve: prefs.preferredRevolverForceLevel != 0
             )
           }
-          if input.isShiftHeld, !input.isHoldingAny([.control, .option]), !spaceRotationBanned {
+          // ★ P294：值 -1 之下 Shift+Space 之語義為「插入全形空白至內文組字區」，
+          // 故不套用本處的「反向輪替」——否則下方新增的 -1 分支永遠輪不到 Shift+Space
+          // （本塊在它之前、且 Shift 一按下即無條件命中）。
+          if input.isShiftHeld, !input.isHoldingAny([.control, .option]), !spaceRevolutionBanned,
+             effectiveSpaceKeyBehaviorAgainstICB != -1 {
             return revolveCandidate(
               reverseOrder: input.isCommandHeld,
               softRevolve: prefs.preferredRevolverForceLevel != 0
@@ -234,12 +244,33 @@ extension InputHandlerProtocol {
           // 中英混打模式：Space 按鍵交由 MixedAlphanumericalTypewriter 處理，
           // 避免直接進入組字區送字邏輯而將讀音字串以原文 commit。
           // 閂滯於英打時緩衝區恆空，故須另以閂滯旗標為前提——否則該鍵會繞道至
-          // 一般組字區送字邏輯（而非即刻遞交半形空格）。
+          // 一般組字區送字邏輯（而非即刻遞交半形空白字元）。
           // 緩衝區為「待確認之讀音」（回退與注音狂打並存）者已於上方早退，不至此處。
           if currentTypingMethod == .vChewingFactory, prefs.mixedAlphanumericalEnabled,
              !mixedAlphanumericalBuffer.isEmpty || mixedAlnumConfig.isLatchedToAlnum {
             if let result = MixedAlphanumericalTypewriter(self).handle(input) {
               return result
+            }
+          }
+          // P294：`kSpaceKeyBehaviorAgainstICB == -1` ⇒ 空白鍵往內文組字區插入空白字元
+          // （Space ⇒ `_SPACE_HW` 半形、Shift+Space ⇒ `_SPACE_FW` 全形）。
+          // ★ 本分支置於混打委派之後、且判準取 `effectiveSpaceKeyBehaviorAgainstICB`：
+          //   中英混打層生效時 `-1` 一律讀作 `0`，故本分支在混打啟用時**恆不成立**——
+          //   空白鍵一律歸混打層之既有語義（見 `effectiveSpaceKeyBehaviorAgainstICB` 之註：
+          //   二者併存會令同一顆空白鍵生出互斥之雙重解讀）。
+          // ★ 組字區**徹底為空**（`assembler.isEmpty`）時亦不成立：此時一概與值 0 看齊，
+          //   逕出空白字元（見 `.ofEmpty` 之註；此即事主所定之定則，`-1` 亦不例外）。
+          // ★ 注拼槽尚有未完成讀音（`spaceRevolutionBanned`）時亦不適用：此時無法把空白節點
+          //   插在未完成讀音之前，故落回下方既有語義（先遞交當前內容、再插入空白字元）。
+          if effectiveSpaceKeyBehaviorAgainstICB == -1, !spaceRevolutionBanned,
+             !assembler.isEmpty, let spaceKey = virtualSpaceKey(for: input) {
+            if (try? assembler.insertKey(spaceKey)) != nil {
+              // 一邊吃一邊屙（僅對位列黑名單的 App 用這招限制組字區長度）。
+              let textToCommit = commitOverflownComposition
+              var inputting = generateStateOfInputting()
+              inputting.textToCommit = textToCommit
+              session.switchState(inputting)
+              return true
             }
           }
           if assembler.cursor < assembler.length, (try? assembler.insertKey(" ")) != nil {
@@ -269,9 +300,18 @@ extension InputHandlerProtocol {
     case .ofAbortion, .ofCommitting, .ofDeactivated: return false
     case .ofAssociates, .ofCandidates, .ofSymbolTable:
       let result = handleCandidate(input: input)
-      guard !result, state.type == .ofAssociates else { return true }
-      session.switchState(State.ofEmpty())
-      return triageInputCore(event: input)
+      if result { return true }
+      if state.type == .ofAssociates {
+        session.switchState(State.ofEmpty())
+        return triageInputCore(event: input)
+      }
+      // 選字窗／符號表未認領者：Command 系熱鍵仍須交還客體
+      // （其理據見 `releaseUnclaimedCommandChord()`），其餘照舊攔截。
+      if input.isCommandShortcutChord {
+        releaseUnclaimedCommandChord()
+        return false
+      }
+      return true
     case .ofMarking:
       if handleMarkingState(input: input) { return true }
       session.switchState(state.convertedToInputting)
@@ -381,6 +421,14 @@ extension InputHandlerProtocol {
     // 砍掉這一段會導致「F1-F12 按鍵干擾組字區」的問題。
     // 暫時只能先恢復這段，且補上偵錯彙報機制，方便今後排查故障。
     if state.hasComposition || !isComposerOrCalligrapherEmpty {
+      // 既然此處已確認「輸入法自身無任何處理」，則 Command 系熱鍵必須交還客體：本段是
+      // 「誰都沒認領」的終點，故交還不會奪走輸入法自己的任何功能。攔截的意義只在於不讓
+      // 文字資料漏進客體文件、以免組字區與文件失去同步——Command 系組合鍵沒有這個顧慮。
+      // 惟交還之前須先遞交既有內容，其理據見 `releaseUnclaimedCommandChord()`。
+      if input.isCommandShortcutChord {
+        releaseUnclaimedCommandChord()
+        return false
+      }
       vCLog(
         "Blocked data: charCode: \(input.charCode), keyCode: \(input.keyCode), text: \(input.text)"
       )
@@ -389,5 +437,34 @@ extension InputHandlerProtocol {
     }
 
     return false
+  }
+
+  /// 處置「輸入法未認領之 Command 系熱鍵」：先遞交當前未遞交之內容，再把事件交還客體。
+  ///
+  /// **何以不能只交還而不遞交**：客體在輸入法仍持有內文組字區（marked text）期間不會執行
+  /// 自己的 Command 系熱鍵——Chrome 之 `Cmd+Ctrl+C`／`Cmd+Ctrl+W` 即因此收不到（事主實機
+  /// 回報）。先行遞交則客體自此脫離組字態，該熱鍵方得生效。
+  ///
+  /// 遞交走 `resetInputHandler()`：其即 IMK 之 `commitComposition:` 所用的同一條路（遞交
+  /// `committableDisplayText` 與混打緩衝、並收斂至空狀態），故未完成讀音之去留一律照既有偏好
+  /// `trimUnfinishedReadingsOnCommit` 決定，不另立判準。無未遞交內容時本函式不動作。
+  private func releaseUnclaimedCommandChord() {
+    guard let session else { return }
+    guard session.state.hasComposition || !isComposerOrCalligrapherEmpty else { return }
+    session.resetInputHandler()
+  }
+
+  /// 依當下修飾鍵決定「空白鍵插入內文組字區」時要採用的虛擬索引鍵。
+  ///
+  /// 僅在 `kSpaceKeyBehaviorAgainstICB == -1` 時有意義：不帶 Shift 者為半形空白
+  /// （`_SPACE_HW`）、帶 Shift 者為全形空白（`_SPACE_FW`）。這兩把鍵的單元圖由
+  /// `LXAssembly.LXFacade` 就地合成，辭典內查無此鍵。
+  /// - Parameter input: 輸入訊號。
+  /// - Returns: 虛擬索引鍵；呼叫方持有 Option／Control／Command 等修飾鍵時回傳 `nil`。
+  private func virtualSpaceKey(for input: InputSignalProtocol) -> String? {
+    guard !input.isHoldingAny([.option, .control, .command]) else { return nil }
+    return input.isShiftHeld
+      ? LXAssembly.VirtualSpaceKey.fullWidth.rawValue
+      : LXAssembly.VirtualSpaceKey.halfWidth.rawValue
   }
 }

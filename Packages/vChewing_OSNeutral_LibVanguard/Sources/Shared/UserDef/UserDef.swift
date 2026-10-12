@@ -146,6 +146,17 @@ public enum UserDef: String, CaseIterable, Identifiable, Sendable {
   case kUsingHotKeyInputMode = "UsingHotKeyInputMode"
   case kFilterFactoryKanjisOfNonCurrentInputMode = "FilterFactoryKanjisOfNonCurrentInputMode"
 
+  // MARK: - 診斷開關（DevZone 專用；P299）。一律預設 `false`＝維持現行行為。
+
+  /// 停用 `IMKSwift` 對 `IMKServer._private._controllers` 之無條件剔除。
+  case kDisableIMKSwiftServerControllerPruning = "_IMKSwift_disableServerControllerPruning"
+  /// 停用 `IMKSwift` 剔除 controller 時對該筆登記所對應之客體 XPC 連線所施之作廢。
+  case kDisableIMKSwiftEvictedClientInvalidation = "_IMKSwift_disableEvictedClientInvalidation"
+  /// 停用 `IMKSwift` 於 controller 停用 3 秒後對 client wrapper 所施之 XPC 終止。
+  case kDisableIMKSwiftClientWrapperTermination = "_IMKSwift_disableClientWrapperTermination"
+  /// 停用 `IMKSwift` 對 controller 之延遲 dealloc（停用 3 秒後之計時器）。
+  case kDisableIMKSwiftControllerDelayedDeallocation = "_IMKSwift_disableControllerDelayedDeallocation"
+
   // MARK: Public
 
   // MARK: - DataType：以關聯值嵌入預設值的資料型別列舉。
@@ -584,7 +595,17 @@ extension UserDef {
     // 數字小鍵盤：0…5 皆有實際行為（見 `InputHandler_HandleStates.swift` 之 `triagePrefs`）。
     // 不得寫成 `0 ... 2`：那會令選項 3／4／5 於匯入時被拒、於和解時被夾成 2。
     case .kNumPadCharInputBehavior: 0 ... 5
-    case .kSpaceKeyBehaviorAgainstICB: 0 ... 2
+    // 空白鍵對內文組字區：-1 插入空白字元（內文組字區）、0 先遞交當前內容再插入空白字元、
+    // 1 呼出選字窗、2 輪替候選字。
+    // 不得寫成 `0 ... 2`：那會令選項 -1 於匯入時被拒、於和解時被夾成 0。
+    // ★ 與中英混打（`mixedAlphanumericalEnabled`）有關的行為偏差：混打層生效時值 -1
+    // **一律以值 0 解讀**（單一正本：`InputHandlerProtocol.effectiveSpaceKeyBehaviorAgainstICB`）。
+    // 值 -1 之語義是「把空白插進組字器」，與混打層自有之空白鍵語義（固化前方讀音／遞交整段
+    // ASCII）互斥；二者併存會令同一顆空白鍵生出雙重解讀（見 Phase 294 記錄）。
+    // 另一則偏差：注拼槽尚有未完成讀音時 -1 亦不生效，落回值 0 之語義。
+    // 第三則偏差（**不分偏好值**之定則）：組字區徹底為空時，空白鍵一概逕出空白字元
+    // （與值 0 看齊）、不插入組字區——插入語義只在組字區已有內容時成立。
+    case .kSpaceKeyBehaviorAgainstICB: -1 ... 2
     case .kCandidateListTextSize: 12 ... 196
     case .kPopupCompositionBufferTextSize: 18 ... 40
     default: nil
@@ -638,6 +659,10 @@ extension UserDef {
     case .kAlwaysUsePCBWithElectronBasedClients: return .bool(true)
     case .kSecurityHardenedCompositionBuffer: return .bool(false)
     case .kCheckAbusersOfSecureEventInputAPI: return .bool(true)
+    case .kDisableIMKSwiftServerControllerPruning: return .bool(false)
+    case .kDisableIMKSwiftEvictedClientInvalidation: return .bool(false)
+    case .kDisableIMKSwiftClientWrapperTermination: return .bool(false)
+    case .kDisableIMKSwiftControllerDelayedDeallocation: return .bool(false)
     case .kDeltaOfCalendarYears: return .integer(-2_000)
     case .kMostRecentInputMode: return .string("")
     case .kCassettePath: return .string("")
@@ -790,6 +815,25 @@ extension UserDef {
     case .kCheckAbusersOfSecureEventInputAPI: return .init(
         userDef: self, shortTitle: "i18n:UserDef.kCheckAbusersOfSecureEventInputAPI.shortTitle",
         description: "i18n:UserDef.kCheckAbusersOfSecureEventInputAPI.description"
+      )
+    case .kDisableIMKSwiftServerControllerPruning: return .init(
+        userDef: self, shortTitle: "i18n:UserDef.kDisableIMKSwiftServerControllerPruning.shortTitle",
+        description: "i18n:UserDef.kDisableIMKSwiftServerControllerPruning.description"
+      )
+    case .kDisableIMKSwiftEvictedClientInvalidation: return .init(
+        userDef: self,
+        shortTitle: "i18n:UserDef.kDisableIMKSwiftEvictedClientInvalidation.shortTitle",
+        description: "i18n:UserDef.kDisableIMKSwiftEvictedClientInvalidation.description"
+      )
+    case .kDisableIMKSwiftClientWrapperTermination: return .init(
+        userDef: self,
+        shortTitle: "i18n:UserDef.kDisableIMKSwiftClientWrapperTermination.shortTitle",
+        description: "i18n:UserDef.kDisableIMKSwiftClientWrapperTermination.description"
+      )
+    case .kDisableIMKSwiftControllerDelayedDeallocation: return .init(
+        userDef: self,
+        shortTitle: "i18n:UserDef.kDisableIMKSwiftControllerDelayedDeallocation.shortTitle",
+        description: "i18n:UserDef.kDisableIMKSwiftControllerDelayedDeallocation.description"
       )
     case .kDeltaOfCalendarYears: return nil
     case .kMostRecentInputMode: return nil
@@ -956,6 +1000,7 @@ extension UserDef {
         userDef: self, shortTitle: "i18n:UserDef.kSpaceKeyBehaviorAgainstICB.shortTitle",
         description: "i18n:UserDef.kSpaceKeyBehaviorAgainstICB.description",
         options: [
+          -1: "i18n:UserDef.kSpaceKeyBehaviorAgainstICB.option.-1",
           0: "i18n:UserDef.kSpaceKeyBehaviorAgainstICB.option.0",
           1: "i18n:UserDef.kSpaceKeyBehaviorAgainstICB.option.1",
           2: "i18n:UserDef.kSpaceKeyBehaviorAgainstICB.option.2",

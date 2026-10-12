@@ -35,7 +35,7 @@ extension InputHandlerProtocol {
   /// 鏡像），供 composition buffer 顯示與 Enter 遞交使用，確保顯示/遞交與 copilot
   /// 最佳猜測（含邊界文脈）同源。
   /// `tailReading` 為 copilot 組句當中最末節點對「前方位置」的具體選讀（含聲調），
-  /// 供前方候選清單與高亮預覽／顯式選字（Shift+選字鍵）路徑使用；空格固化不再以
+  /// 供前方候選清單與高亮預覽／顯式選字（Shift+選字鍵）路徑使用；空白鍵固化不再以
   /// 之釘選——只插聲調桶、不覆寫，保留 LM 重切分自由度。
   /// - Returns: 含讀音桶、預覽文字、橫跨節點詞音配對、主段文字陣列與前方選讀的
   ///   暫態結果；閘門不符或試算失敗時回傳 nil。
@@ -524,7 +524,7 @@ extension InputHandlerProtocol {
   /// 生成「正在輸入」狀態。相關的內容會被拿給狀態機械用來處理在電腦螢幕上顯示的內容。
   /// - Parameters:
   ///   - sansReading: 不顯示組音區/組筆區。
-  ///   - guarded: 是否在該狀態的顯示文字為空的時候顯示替補空格，否則 InputMethodKit 無法正常攔截方向鍵事件。
+  ///   - guarded: 是否在該狀態的顯示文字為空的時候顯示替補空白字元，否則 InputMethodKit 無法正常攔截方向鍵事件。
   /// - Returns: 生成的「正在輸入」狀態。
   public func generateStateOfInputting(
     sansReading: Bool = false,
@@ -745,6 +745,11 @@ extension InputHandlerProtocol {
     displayTextSegments = displayTextSegments.map { $0.trimmingCharacters(in: .newlines) }
     var displayedText = displayTextSegments.joined()
     let noReading = sansReading || [.codePoint, .romanNumerals].contains(currentTypingMethod)
+    // ★ 中英混打緩衝之原文**不屬本存取器**：該原文一律由呼叫端自行追加（P280 之語義
+    // ——逃生口先取出原文、再清空緩衝、最後取已組字之中文），故 `reading` 不得再把它
+    // 當成「未完成讀音」插入，否則同一段原文會被遞交兩次（實測：關閉
+    // `trimUnfinishedReadingsOnCommit` 後，`su` 之遞交得 `susu`）。
+    let hasPendingMixedAlnumBuffer = !mixedAlphanumericalBuffer.isEmpty
     // 狂拼模式：遞交內容與 composition buffer 顯示同源於 copilot 全句組句
     // （主段＋前方預覽），確保 IMK 強制遞交（CpLk 等）與所見一致。狂拼的前方
     // 預覽是 copilot 組句後的中文文字、並非未完成拼寫的原文拼音，故 sansReading
@@ -753,9 +758,16 @@ extension InputHandlerProtocol {
     // （Enter 直遞已定案為「固化＋停留」，不再走此全句遞交路徑。）
     if let furiousContext = [.codePoint, .romanNumerals].contains(currentTypingMethod)
       ? nil : furiousFrontContext {
-      return furiousContext.assembledMainValues.joined() + furiousContext.preview
+      let mainText = furiousContext.assembledMainValues.joined()
+      // ★ 中英混打＋注音狂打並存時，前方讀音素材住**混打緩衝區**、非 copilot 之投機預覽
+      // ——該情境下組字區讀音欄所示即緩衝原文，故遞交內容只取 copilot 之主段，原文由
+      // 呼叫端追加（上述語義）。純狂打側照舊：該側之顯示與遞交同為前方預覽。
+      if mixedAlnumZhuyinFuriousInEffect { return mainText }
+      return mainText + furiousContext.preview
     }
-    let reading: String = noReading ? "" : (furiousTypingPreviewedReading ?? readingForDisplay)
+    let reading: String = (noReading || hasPendingMixedAlnumBuffer)
+      ? ""
+      : (furiousTypingPreviewedReading ?? readingForDisplay)
     guard !reading.isEmpty else { return displayedText }
     let cursor = max(min(convertCursorForDisplay(assembler.cursor), displayedText.count), 0)
     let insertionIndex = displayedText.index(displayedText.startIndex, offsetBy: cursor)
@@ -1021,7 +1033,7 @@ extension InputHandlerProtocol {
     }
 
     // 狂拼模式：注拼槽尚有未完成讀音（hasFuriousFrontPending）時，先把前方讀音固化進
-    // 組字器（與空格／Tab／Enter 同語義），再讓標點正常插入——未完成讀音不再擋下標點
+    // 組字器（與空白鍵／Tab／Enter 同語義），再讓標點正常插入——未完成讀音不再擋下標點
     // 輸入（消除 A9B69908D 蜂鳴）。固化失敗（如無法展開成讀音桶的無效前綴）時維持
     // 既有蜂鳴行為。
     if !isComposerOrCalligrapherEmpty, hasFuriousFrontPending {
@@ -1686,7 +1698,7 @@ extension InputHandlerProtocol {
     var debugIntel: String?
 
     do {
-      let revolvement = try assembler.revolveCandidate(
+      let revolution = try assembler.revolveCandidate(
         cursorType: homaCandidateCursorType,
         counterClockwise: reverseOrder,
         softRevolve: softRevolve,
@@ -1695,7 +1707,7 @@ extension InputHandlerProtocol {
         debugIntel = debugIntelRetrieved
       }
       if previousSentence.map(\.value) != assembler.assembledSentence.map(\.value) {
-        tooltipPayload = (revolvement.0.pair.value, revolvement.current, revolvement.total)
+        tooltipPayload = (revolution.0.pair.value, revolution.current, revolution.total)
       } else {
         errorCode = "040CDB2A"
       }
@@ -1858,7 +1870,10 @@ extension InputHandlerProtocol {
     let bannedModifiers: KBEvent.ModifierFlags = [.option, .shift, .command, .control]
     let noBannedModifiers = !input.isHoldingAny(bannedModifiers)
     var triggered = input.isCursorClockLeft || input.isCursorClockRight
-    triggered = triggered || (input.isSpace && prefs.spaceKeyBehaviorAgainstICB == 1)
+    // 判準取 `effectiveSpaceKeyBehaviorAgainstICB`（而非 `prefs` 之原值）：中英混打層生效時
+    // 值 `-1` 一律讀作 `0`，故不落入本處之「空白鍵呼叫選字窗」——那正是 `-1` 不得與混打層
+    // 爭奪同一顆空白鍵之另一處落實（詳見該屬性之註）。
+    triggered = triggered || (input.isSpace && effectiveSpaceKeyBehaviorAgainstICB == 1)
     triggered = triggered || input.isPageDown || input.isPageUp
     triggered = triggered || (input.isTab && prefs.specifyShiftTabKeyBehavior)
     guard notEmpty, noBannedModifiers, triggered else { return false }

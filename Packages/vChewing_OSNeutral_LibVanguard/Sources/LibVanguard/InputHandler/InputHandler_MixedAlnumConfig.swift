@@ -55,7 +55,7 @@ public struct MixedAlnumConfig: Sendable, Equatable {
 ///
 /// 並存態下空白鍵有兩種歸屬，二者互斥且**皆屬混打層**（故既有之「固化前方讀音」不得再
 /// 插手其間）：
-///   - `.levelToneConfirmation`：以**陰平**確認該待調讀音（不帶修飾鍵之空白鍵）；
+///   - `.firstToneConfirmation`：以**陰平**確認該待調讀音（不帶修飾鍵之空白鍵）；
 ///   - `.asciiCommitEscape`：放棄注音處理、整段混打緩衝以原文遞交（**Shift+Space**）。
 ///
 /// 本型別即該判準之**單一正本**：分診早段（固化塊）與打字機（陰平確認分支）皆消費之。
@@ -65,9 +65,9 @@ enum MixedAlnumSpaceDuty: Sendable {
   /// 本鍵非並存態之空白鍵 ⇒ 不屬混打層：交還既有流程處置
   /// （純狂打之固化、拼音側之無調確認等）。
   case none
-  /// 混打層以陰平聲調確認該待調讀音（見 `confirmMixedAlnumReadingWithLevelTone`）。
-  case levelToneConfirmation
-  /// 混打層放棄注音處理：整段緩衝以原文遞交、其後附一個半形空格（即 Shift+Space 之逃生口）。
+  /// 混打層以陰平聲調確認該待調讀音（見 `confirmMixedAlnumReadingWithFirstTone`）。
+  case firstToneConfirmation
+  /// 混打層放棄注音處理：整段緩衝以原文遞交、其後附一個半形空白字元（即 Shift+Space 之逃生口）。
   case asciiCommitEscape
 
   // MARK: Internal
@@ -89,6 +89,35 @@ extension InputHandlerProtocol {
     case .ofETen26: 5 // 僅一例：`ㄍㄧㄠˊ → vezf`。
     default: 4 // 其餘所有注音排列，無論動態還是靜態排列，最大碼長均為 4。
     }
+  }
+
+  /// 中英混打層是否已接管當前之可列印鍵輸入（判準之單一正本）。
+  ///
+  /// 與 `handleComposition(input:)` 之分派條件同源（P294 收斂：該處原本自持一份逐字相同之
+  /// 運算式）。凡「某偏好值或某按鍵之語義在中英混打下必須另作解讀」者，皆應以本屬性為閘，
+  /// 而**不得**在消費端各自拼湊同一份條件——那正是漂移之溫床。
+  public var isMixedAlphanumericalLayerInEffect: Bool {
+    currentTypingMethod == .vChewingFactory && typingMode != .cassette && !composer.isPinyinMode
+      && prefs.mixedAlphanumericalEnabled
+  }
+
+  /// 「空白鍵對內文組字區的行為」之**實際生效值**。
+  ///
+  /// - Important: 中英混打層生效（`isMixedAlphanumericalLayerInEffect`）時，
+  ///   `UserDef.kSpaceKeyBehaviorAgainstICB` 之 `-1`（「插入空白字元（內文組字區）」）
+  ///   **一律讀作 `0`**（「先遞交當前內容、再插入空白字元」）。理由：`-1` 之語義是「把空白
+  ///   插進組字器」，而混打層之空白鍵自有其語義（固化前方讀音／遞交整段 ASCII），二者併存
+  ///   即生**互斥之雙重解讀**——實測（事主於 P294 驗收時回報；須注音狂打一併開啟才會現形）
+  ///   「組字區為空時按空白鍵」會先插入 `_SPACE_HW`，第二拍遂被
+  ///   `MixedAlphanumericalTypewriter` 之「前方讀音既已固化 ⇒ 遞交組字內容 ＋ 半形空白
+  ///   字元」分支接手，得到「一次遞交兩個空白字元」之怪異結果。混打既已接管該鍵之消化，
+  ///   降級為 `0` 即「把該鍵交還混打層既有語義」，且不犧牲 `-1` 在混打關閉時之全部行為。
+  /// - Important: 本屬性即該降級之**單一正本**：凡讀取該偏好者一律取本值，**不得**逕讀
+  ///   `prefs.spaceKeyBehaviorAgainstICB`——P294 之六個消費點原本各自逕讀，遂生本病灶。
+  public var effectiveSpaceKeyBehaviorAgainstICB: Int {
+    let rawValue = prefs.spaceKeyBehaviorAgainstICB
+    guard rawValue == -1, isMixedAlphanumericalLayerInEffect else { return rawValue }
+    return 0
   }
 
   /// 混打緩衝區所承載之注音讀音，無則 `nil`——**不拘狂打開關**之量測。
@@ -147,7 +176,7 @@ extension InputHandlerProtocol {
   /// 本拍之空白鍵於「中英混打＋注音狂打並存態」下之歸屬（判準之單一正本，見 `MixedAlnumSpaceDuty`）。
   ///
   /// - Important: **Shift 不在陰平確認之列**——Shift 是使用者明示之英文意圖，並存態下
-  ///   Shift+Space 之既有語義為「放棄注音處理、逕遞交整段 ASCII ＋ 半形空格」（見
+  ///   Shift+Space 之既有語義為「放棄注音處理、逕遞交整段 ASCII ＋ 半形空白字元」（見
   ///   `MixedAlphanumericalTypewriter`）。若不設此修飾鍵之閘，陰平確認即搶先消費本鍵、
   ///   該逃生口無從觸發（事主實機回報：`su` 之後按 Shift+Space 得陰平確認，而非遞交 `su `）。
   /// - Note: 兩態皆以「緩衝非空 ∧ `mixedAlnumZhuyinFuriousInEffect`」為前提；`.none` 者不屬
@@ -159,7 +188,7 @@ extension InputHandlerProtocol {
     // 該情境本即既有語義（見 `MixedAlphanumericalTypewriter` 之
     // `commitsWholeMixedBufferOnSpace`）。
     if isShiftHeld { return .asciiCommitEscape }
-    return mixedAlnumPendingReading != nil ? .levelToneConfirmation : .none
+    return mixedAlnumPendingReading != nil ? .firstToneConfirmation : .none
   }
 
   /// 混打緩衝是否為「**恰為**一個尚未鍵入聲調之讀音」——**不拘狂打開關**之量測。
