@@ -6,9 +6,9 @@ update:
 	@echo "Running lexicon update script for vChewing-macOS..."
 	@chmod +x ./Scripts/vchewing-update-lexicon.swift || true
 	@if [ "$(DRY_RUN)" = "true" ]; then \
-		./Scripts/vchewing-update-lexicon.swift --path . --dry-run; \
+		SWIFT_EXTRA_FLAGS="$(LEGACY_SWIFT_EXTRA_FLAGS)" ./Scripts/vchewing-update-lexicon.swift --path . --dry-run; \
 	else \
-		./Scripts/vchewing-update-lexicon.swift --path .; \
+		SWIFT_EXTRA_FLAGS="$(LEGACY_SWIFT_EXTRA_FLAGS)" ./Scripts/vchewing-update-lexicon.swift --path .; \
 	fi
 
 # ── 鍵盤熱鍵使用手冊（`shortcuts.html`）之產製 ──────────────────────
@@ -103,7 +103,7 @@ clean510:
 # Xcode active, the 5.10 compiler is handed its macOS 27 SDK and dies on
 # `could not build Objective-C module 'Foundation'`.
 #
-# C／ObjC 靶（`IMKSwiftModernHeaders`／`OSFrameworkImplViaObjC`／`SwiftyCapsLockToggler`）另須 `-Xcc -target`：
+# C／ObjC 建置目標（`IMKSwiftModernHeaders`／`OSFrameworkImplViaObjC`／`SwiftyCapsLockToggler`）另須 `-Xcc -target`：
 # `-Xswiftc -target` 只管 Swift，clang 端仍照 SwiftPM 的地板產出（`ld: warning: object file … was built for
 # newer 'macOS' version (10.13) than being linked (10.9)`）；而 `-Xcc -mmacosx-version-min=…` 會被 SwiftPM
 # 自己那條 `-target …10.13` 壓住（clang 讓 `-target` 勝、與先後無關），故必須再下一條 `-target` 覆蓋
@@ -139,6 +139,14 @@ LEGACY_SCRATCH_ROOT ?= .build/.legacy-root
 LEGACY_CONFIG ?= debug
 LEGACY_ARCLITE ?= ./LegacyZone/ARCLite/libarclite_macosx.a
 LEGACY_BUILD_FLAGS = --package-path . --scratch-path "$(LEGACY_SCRATCH_ROOT)" --sdk "$(LEGACY_SDK)"
+# 額外傳給 SwiftPM 的旗標（預設空）。典型用途是 `--disable-sandbox`：本側之 `swift build` 於部分環境
+# （自身已受外層沙箱拘束者）會在 manifest 編譯那關失敗——`sandbox-exec: sandbox_apply: Operation not
+# permitted`、繼而 `error: Invalid manifest`——該處即由呼叫端傳入本旗標。`lexiconLegacy` 會把它轉遞給
+# `LegacyZone/LexiconBuildTrigger` 的 `swift build`（見下）；兩條版本提升鏈路（`update` 與 `gitrelease`）
+# 則以 `SWIFT_EXTRA_FLAGS` 之名把它轉遞給其 `swift package resolve`（同樣會在 manifest 編譯那關失敗）。
+# 預設不動：正常環境不該削弱 SwiftPM 之 manifest 沙箱。`LEGACY_BUILD_FLAGS` 同理，只是後者已由既有各
+# target 直接用於 `swift build`。
+LEGACY_SWIFT_EXTRA_FLAGS ?=
 # 鏈結期的 `-platform_version <platform> <min> <sdk>`。SwiftPM 5.10 不認得 `--sdk`，會把 triple 的版本段
 # **同時**填進 min 與 sdk 兩格，於是產物之 `LC_VERSION_MIN_MACOSX` 記成 `version 10.9 sdk 10.9`——而實情
 # 是以 13.3 的 SDK 鏈結的（`--sdk` 有生效，只是沒寫進這個欄位）。
@@ -244,8 +252,12 @@ bundleLegacy: lexiconLegacy
 # 該套件以 `LEXICON_CONFIG`（預設 release）建置——辭典產製 CPU 密集，debug 產物慢上許多。該變數名與
 # 本檔的 `LEGACY_CONFIG` 刻意不同：後者指 *app* 的 config，且會以 target-specific 變數外洩到 sub-make，
 # 同名會讓 `make debugLegacy` 把詞典建置一起拖回 debug。
+#
+# `LEGACY_SWIFT_EXTRA_FLAGS` 顯式轉遞：命令列變數雖會經 `MAKEFLAGS` 傳進 sub-make，但本檔是同名的定義
+# 所在，顯式傳遞才看得出這條線是刻意接上的（見檔首該變數之註解）。
 lexiconLegacy:
-	@$(MAKE) --no-print-directory -C LegacyZone/LexiconBuildTrigger build510 collect
+	@$(MAKE) --no-print-directory -C LegacyZone/LexiconBuildTrigger build510 collect \
+		LEGACY_SWIFT_EXTRA_FLAGS="$(LEGACY_SWIFT_EXTRA_FLAGS)"
 
 # ── archiveLegacy ───────────────────────────────────────────────────
 #
@@ -547,7 +559,7 @@ gitrelease:
 	@echo "Running git release script for vChewing-macOS..."
 	@chmod +x ./Scripts/vchewing-update.swift || true
 	@if [ "$(DRY_RUN)" = "true" ]; then \
-		./Scripts/vchewing-update.swift --path . --dry-run; \
+		SWIFT_EXTRA_FLAGS="$(LEGACY_SWIFT_EXTRA_FLAGS)" ./Scripts/vchewing-update.swift --path . --dry-run; \
 	else \
-		./Scripts/vchewing-update.swift --path .; \
+		SWIFT_EXTRA_FLAGS="$(LEGACY_SWIFT_EXTRA_FLAGS)" ./Scripts/vchewing-update.swift --path .; \
 	fi

@@ -15,7 +15,7 @@ import PackageDescription
 // （`This will result in duplication of library code.`），因此整個閉包只能以單一動態庫出貨。
 //
 // 套件名為 `LibVanguard`、出貨產品名為 `Vanguard`，故產物是 `libVanguard.dylib` 而非
-// `libLibVanguard.dylib`。SwiftPM 的資源 bundle 名取「套件名 ＋ target 名」，是以各靶的資源
+// `libLibVanguard.dylib`。SwiftPM 的資源 bundle 名取「套件名 ＋ target 名」，是以各建置目標的資源
 // bundle 實名為 `LibVanguard_<Target>.bundle`。
 //
 // 本 manifest 以 `@resultBuilder` 的 DSL 撰寫（見檔尾的 `ArrayBuilder`），
@@ -39,6 +39,7 @@ let package = Package(
       type: .dynamic,
       targets: buildStrings {
         "LibVanguard"
+        "Arimitsu"
         "Shared"
         "ResourceLocator"
         "LexiconAssembly"
@@ -49,7 +50,7 @@ let package = Package(
         "BPMFVS"
       }
     )
-    /// 測試素材靶另行出貨，刻意與出貨動態庫分開，避免將測試素材塞進出貨 dylib。
+    /// 測試素材目標另行出貨，刻意與出貨動態庫分開，避免將測試素材塞進出貨 dylib。
     Product.library(
       name: "LXAssemblyMaterials4Tests",
       type: .dynamic,
@@ -154,8 +155,16 @@ let package = Package(
       }
     )
     Target.target(
+      name: "Arimitsu",
+      dependencies: buildTargetDependencies {
+        "Tekkon"
+      },
+      path: "Sources/LibVanguard/Arimitsu"
+    )
+    Target.target(
       name: "LibVanguard",
       dependencies: buildTargetDependencies {
+        "Arimitsu"
         "BPMFVS"
         "BrailleSputnik"
         "LexiconAssembly"
@@ -167,6 +176,7 @@ let package = Package(
         )
         "Tekkon"
       },
+      exclude: ["Arimitsu"],
       swiftSettings: buildSwiftSettings {
         .defaultIsolation(MainActor.self) // set Default Actor Isolation
       },
@@ -177,7 +187,7 @@ let package = Package(
 
     // MARK: - Test Support Targets
 
-    // 測試素材靶：原始佈局位於 `Tests/`，故保留顯式 `path`。
+    // 測試素材目標：原始佈局位於 `Tests/`，故保留顯式 `path`。
     Target.target(
       name: "HomaSharedTestComponents",
       dependencies: buildTargetDependencies {
@@ -230,7 +240,18 @@ let package = Package(
         "RankingEvalKit"
       }
     )
-
+    Target.testTarget(
+      name: "ArimitsuTests",
+      dependencies: buildTargetDependencies {
+        "Arimitsu"
+        "Shared"
+        "Tekkon"
+      },
+      path: "Tests/LibVanguardTests/Arimitsu",
+      swiftSettings: buildSwiftSettings {
+        .defaultIsolation(MainActor.self) // set Default Actor Isolation
+      }
+    )
     Target.testTarget(
       name: "BPMFVSTests",
       dependencies: buildTargetDependencies {
@@ -310,6 +331,7 @@ let package = Package(
       name: "LibVanguardTests",
       dependencies: buildTargetDependencies {
         "LibVanguard"
+        "Arimitsu"
         "LexiconAssembly"
         "LXAssemblyMaterials4Tests"
         "Homa"
@@ -318,6 +340,7 @@ let package = Package(
         "Shared"
         "Tekkon"
       },
+      exclude: ["Arimitsu"],
       swiftSettings: buildSwiftSettings {
         .defaultIsolation(MainActor.self) // set Default Actor Isolation
       },
