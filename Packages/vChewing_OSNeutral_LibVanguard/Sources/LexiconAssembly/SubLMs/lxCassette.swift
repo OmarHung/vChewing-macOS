@@ -20,6 +20,10 @@ extension LXAssembly {
   struct LXCassette: Sendable {
     // MARK: Internal
 
+    /// 本磁帶之儲存後端（P316）：`open(_:)` 未另行指定者即循此讀取。
+    /// 指派後，卡帶本身即不再「只有靜態入口才碰得到它」。
+    var locator: any UserDataLocator = LXAssembly.userDataLocator
+
     private(set) var filePath: String?
     private(set) var nameShort: String = ""
     private(set) var nameENG: String = ""
@@ -927,16 +931,27 @@ extension LXAssembly.LXCassette {
   /// - Parameter path: 檔案路徑。
   /// - Returns: 是否載入成功。
   @discardableResult
-  mutating func open(_ path: String) -> Bool {
+  mutating func open(
+    _ path: String,
+    using locatorOverride: (any UserDataLocator)? = nil
+  )
+    -> Bool {
+    let locator = locatorOverride ?? locator
     if isLoaded { return false }
     let oldPath = filePath
     filePath = nil
-    if FileManager.default.fileExists(atPath: path) {
+    let fileURL = URL(fileURLWithPath: path)
+    if locator.exists(at: fileURL) {
       do {
-        guard let fileHandle = FileHandle(forReadingAtPath: path) else {
-          throw LXAssembly.FileErrors.fileHandleError("")
+        let lineIterator: ByteLineIterator
+        if locator.isBackedByFileSystem {
+          guard let fileHandle = FileHandle(forReadingAtPath: path) else {
+            throw LXAssembly.FileErrors.fileHandleError("")
+          }
+          lineIterator = ByteLineIterator(file: fileHandle)
+        } else {
+          lineIterator = ByteLineIterator(data: try locator.read(at: fileURL))
         }
-        let lineIterator = ByteLineIterator(file: fileHandle)
         var theMaxKeyLength = 1
         var loadingKeys = false
 

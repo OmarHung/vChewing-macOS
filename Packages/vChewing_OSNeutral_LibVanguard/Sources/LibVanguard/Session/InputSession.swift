@@ -3,30 +3,32 @@
 // This code is released under the SPDX-License-Identifier: `LGPL-3.0-or-later`.
 
 import Foundation
+import SwiftExtension
 
 // MARK: - InputSession
 
 public final class InputSession: SessionProtocol, Sendable {
   // MARK: Lifecycle
 
-  /// 預配置 session（極性雙緩衝用）：不繫結任何 controller/client，僅初始化內部引擎。
+  /// 預配置 session（會話池用）：不繫結任何 controller/client，僅初始化內部引擎。
   /// 後續經由 `reassign(toAddr:)` 與具體 controller 綁定。
   public init(
     preallocated: (),
     manuallyAssignedClientProxy: (any SessionClientProxy)? = nil,
-    controllerAddr: UInt? = nil
+    controllerAddr: UInt? = nil,
+    host: SessionHost = .shared
   ) {
+    self.host = host
     if let controllerAddr {
       self.inputControllerAssignedAddr = controllerAddr
-      Self.registerSessionAddr(self, for: controllerAddr)
     }
     if let manuallyAssignedClientProxy {
       let obj = manuallyAssignedClientProxy as AnyObject
       let controllerAddr = UInt(bitPattern: Unmanaged.passUnretained(obj).toOpaque())
       self.inputControllerAssignedAddr = controllerAddr
-      Self.registerSessionAddr(self, for: controllerAddr)
       construct(clientProxy: manuallyAssignedClientProxy)
     }
+    adoptHostDefaults()
     initInputHandler()
     synchronizer4LMPrefs?()
     self.inputMode = .init(rawValue: prefs.mostRecentInputMode) ?? .imeModeNULL
@@ -51,13 +53,6 @@ public final class InputSession: SessionProtocol, Sendable {
   public static var isASCIIModeForAllClients = false
   /// 一個共用辭典，專門用來給每個副本用的 isASCIIMode 追蹤用餐數。
   public static var isASCIIModeForEachClient: [String: Bool] = [:]
-
-  // MARK: - 極性雙緩衝 Session 池
-
-  /// 偶數 generation controller 專用 session。
-  public static let sessionEven = InputSession(preallocated: ())
-  /// 奇數 generation controller 專用 session。
-  public static let sessionOdd = InputSession(preallocated: ())
 
   public static var current: InputSession? {
     get { _current }
@@ -88,6 +83,9 @@ public final class InputSession: SessionProtocol, Sendable {
   public var ui: (any SessionUIProtocol)? = SessionHost.shared.ui()
 
   public var prefs: any PrefMgrProtocol = SessionHost.shared.prefs()
+
+  /// 本會話所屬之宿主。非共享宿主之場合，於 `init` 內以 `adoptHostDefaults()` 改綁所有動作依賴。
+  public let host: SessionHost
 
   /// 上一個被處理過的鍵盤事件。
   public var previouslyHandledEvents = [KBEvent]()
@@ -127,8 +125,8 @@ public final class InputSession: SessionProtocol, Sendable {
     guard let addr = inputControllerAssignedAddr,
           let opaque = UnsafeRawPointer(bitPattern: addr)
     else { return nil }
-    if !UserDefaults.pendingUnitTests {
-      guard SessionHost.shared.isControllerAddressAlive(addr) else { return nil }
+    if !OSUtils.isRunningUnitTests {
+      guard host.isControllerAddressAlive(addr) else { return nil }
     }
     let obj = Unmanaged<AnyObject>.fromOpaque(opaque).takeUnretainedValue()
     return obj as? any SessionClientProxy
@@ -164,7 +162,7 @@ public final class InputSession: SessionProtocol, Sendable {
   /// 在 parity 雙緩衝 singleton pair 體制下，兩個 Session 實例共用同一個 `prefs` 引用。
   /// `willSet` 將新模式寫入 `prefs.mostRecentInputMode`（全局唯一），另一方在
   /// `performServerActivation()` 啟動時自動從 `IMEApp.currentInputMode` 同步，
-  /// 確保簡繁模式在雙極性 Session 之間一致。
+  /// 確保簡繁模式在各會話格之間一致。
   public var inputMode: Shared.InputMode = .imeModeNULL {
     willSet {
       /// 將新的簡繁輸入模式提報給 Prefs 模組。IMEApp 模組會據此計算正確的資料值。
@@ -177,7 +175,7 @@ public final class InputSession: SessionProtocol, Sendable {
         resetInputHandler()
         // ----------------------------
         /// 重設所有語言模組。這裡不需要做按需重設，因為對運算量沒有影響。
-        inputHandler?.currentLM = inputMode.lexicon // 會自動更新組字引擎內的模組。
+        inputHandler?.currentLM = currentLexicon // 會自動更新組字引擎內的模組。
         /// 清空注拼槽＋同步最新的注拼槽排列設定。
         inputHandler?.ensureKeyboardParser()
         /// 將輸入法偏好設定同步至語言模組內。
@@ -186,71 +184,39 @@ public final class InputSession: SessionProtocol, Sendable {
     }
   }
 
-  /// 從 controller 位址查詢對應的 InputSession。
-  public static func session(for controllerAddr: UInt) -> InputSession? {
-    if UserDefaults.pendingUnitTests {
-      guard controllerAddr == 0 else { return nil }
-    } else {
-      guard SessionHost.shared.isControllerAddressAlive(controllerAddr) else { return nil }
-    }
-    guard let ssnAddr = sessionAddrByControllerAddr[controllerAddr],
-          let opaque = UnsafeRawPointer(bitPattern: ssnAddr)
-    else { return nil }
-    return Unmanaged<InputSession>.fromOpaque(opaque).takeUnretainedValue()
-  }
-
-  /// 登記 controller → session 對照關係。
-  public static func registerSessionAddr(_ session: InputSession, for controllerAddr: UInt) {
-    let ssnKey = UInt(bitPattern: Unmanaged.passUnretained(session).toOpaque())
-    sessionAddrByControllerAddr[controllerAddr] = ssnKey
-  }
-
-  /// 以純記憶體位址移除 controller 對照關係（供 `onDealloc` block 使用，避免捕獲 self）。
-  public static func unregisterSessionAddr(forControllerAddr ctlKey: UInt) {
-    guard let ssnKey = sessionAddrByControllerAddr[ctlKey],
-          let opaque = UnsafeRawPointer(bitPattern: ssnKey) else { return }
-    sessionAddrByControllerAddr[ctlKey] = nil
-    let session = Unmanaged<InputSession>.fromOpaque(opaque).takeUnretainedValue()
-    // 僅在 session 仍屬於該 controller 時才清空 inputControllerAssignedAddr。
-    // reassign 後 session 已歸新 controller 所有，舊 controller 的 dealloc 不應干擾。
-    if session.inputControllerAssignedAddr == ctlKey {
-      session.inputControllerAssignedAddr = nil
-    }
-  }
-
-  /// 以 generation parity 查詢對應的 InputSession singleton。
-  public static func session(forParity parity: Int) -> InputSession {
-    (parity & 1) == 0 ? sessionEven : sessionOdd
-  }
-
   public func initInputHandler() {
     if let inputHandler {
-      inputHandler.currentLM = inputMode.lexicon
-      inputHandler.prefs = SessionHost.shared.prefs()
+      inputHandler.currentLM = host.lexicon(for: inputMode)
+      inputHandler.prefs = host.prefs()
       inputHandler.errorCallback = { [weak self] msg in self?.callError(msg) }
-      inputHandler.filterabilityChecker = SessionHost.shared.isStateDataFilterableForMarked
-      inputHandler.notificationCallback = SessionHost.shared.notify
-      inputHandler.pomSaveCallback = { SessionHost.shared.savePerceptionOverrideModelData() }
-      inputHandler.usageLedgerSaveCallback = { SessionHost.shared.saveUsageLedgerData() }
+      inputHandler.filterabilityChecker = host.isStateDataFilterableForMarked
+      inputHandler.notificationCallback = host.notify
+      inputHandler.pomSaveCallback = { self.host.savePerceptionOverrideModelData() }
+      inputHandler.usageLedgerSaveCallback = { self.host.saveUsageLedgerData() }
       inputHandler.assembler.maxSegLength = prefs.maxCandidateLength
       inputHandler.assembler.beamWidth = prefs.assemblerBeamWidth
       inputHandler.ensureKeyboardParser()
     } else {
       inputHandler = InputHandler(
-        lx: inputMode.lexicon,
-        pref: SessionHost.shared.prefs(),
+        lx: host.lexicon(for: inputMode),
+        pref: host.prefs(),
         errorCallback: { [weak self] msg in self?.callError(msg) },
-        filterabilityChecker: SessionHost.shared.isStateDataFilterableForMarked,
-        notificationCallback: SessionHost.shared.notify,
-        pomSaveCallback: { SessionHost.shared.savePerceptionOverrideModelData() }
+        filterabilityChecker: host.isStateDataFilterableForMarked,
+        notificationCallback: host.notify,
+        pomSaveCallback: { self.host.savePerceptionOverrideModelData() }
       )
-      inputHandler?.usageLedgerSaveCallback = { SessionHost.shared.saveUsageLedgerData() }
+      inputHandler?.usageLedgerSaveCallback = { self.host.saveUsageLedgerData() }
+    }
+    if host !== SessionHost.shared, let handler = inputHandler {
+      let theHost = host
+      handler.isJISKeyboard = { [weak theHost] in theHost?.isKeyboardJIS() ?? false }
+      handler.narrator = theHost.narrator()
     }
     inputHandler?.markingTooltipGenerator = { state in
       let result = IMEStateParsed(state).generateTooltipForMarking()
       var colorState = result.colorState
       var tooltip = result.tooltip
-      if SessionHost.shared.prefs().phraseReplacementEnabled {
+      if self.host.prefs().phraseReplacementEnabled {
         colorState = .warning
         tooltip += "\n" + "i18n:PhraseOperation.PhraseReplacementInterfering".i18n
       }
@@ -260,19 +226,28 @@ public final class InputSession: SessionProtocol, Sendable {
   }
 
   /// 重新綁定至新的 controller 位址。
-  /// 更新 controller→session 對照表並清理舊 controller 的殘留 mapping。
   public func reassign(toAddr newAddr: UInt) {
-    let oldAddr = inputControllerAssignedAddr
     inputControllerAssignedAddr = newAddr
-    if let oldAddr {
-      Self.sessionAddrByControllerAddr[oldAddr] = nil
-    }
-    Self.registerSessionAddr(self, for: newAddr)
+  }
+
+  /// 令觸發本次回呼的 controller 成為本會話之客體綁定正本。
+  ///
+  /// 會話格會被不同 controller 先後（甚至同時）使用；`inputControllerAssignedAddr` 若只在
+  /// `activateServer` 時更新，則 IMK 之排程交錯（A 退場 → A 之副本延遲拆除 → B 接手）會把它
+  /// 留在已撕裂的值上：或為 nil、或指向客體已遭終止的副本。凡帶 controller 位址之回呼皆先
+  /// 呼叫本函式，撕裂即不可能跨過一次回呼——因為下一次回呼一定會把正本拉回觸發者。
+  ///
+  /// - Returns: 是否真的發生了重綁（已一致時為 `false`，故可無條件逐回呼呼叫）。
+  @discardableResult
+  public func adoptClientAddr(_ controllerAddr: UInt) -> Bool {
+    guard inputControllerAssignedAddr != controllerAddr else { return false }
+    reassign(toAddr: controllerAddr)
+    return true
   }
 
   public func hidePalettes() {
     asyncOnMain {
-      SessionHost.shared.postEventForClosingAllPanels()
+      self.host.postEventForClosingAllPanels()
     }
   }
 
@@ -333,9 +308,13 @@ public final class InputSession: SessionProtocol, Sendable {
 
   private static var _current: InputSession?
 
-  /// 以 controller NSObject 的記憶體位址整數值為鍵的對照字典。
-  /// 資料值是 Session 的記憶體位址。
-  /// - Note: Session 的記憶體位址必須在其生命週期有效期間內確保有效。
-  ///   此處不保留強引用，避免靜態字典參與 ARC。
-  private static var sessionAddrByControllerAddr = [UInt: UInt]()
+  /// 依 `host` 改綁所有動作依賴（含偏好設定與辭典副本）。
+  private func adoptHostDefaults() {
+    guard host !== SessionHost.shared else { return }
+    prefs = host.prefs()
+    ui = host.ui()
+    buzzer = { [weak host] in mainSync { host?.buzz() } }
+    synchronizer4LMPrefs = { [weak host] in host?.syncLMPrefs() }
+    trieCacheFlushHandler = { [weak host] in host?.flushTrieCaches() }
+  }
 }

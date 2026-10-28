@@ -7,14 +7,12 @@
 // `"FuriousTypingEnabled"` → `"FuriousTypingEnabled4Pinyin"`（承接舊值）
 //                          ＋ `"FuriousTypingEnabled4Zhuyin"`（**不**承接，維持出廠預設 `false`）。
 //
-// - Important: 被測之 `migrateDeprecatedSettings()` 以 **`UserDefaults.standard`** 為據
-//   （`PrefMgr_Core.swift` 之 `let defaults = UserDefaults.standard`），**不經**
-//   `UserDefaults.current`。故本 suite 全程強制 `UserDefaults.pendingUnitTests = false`
-//   （使 `current == .standard`，令 `@AppProperty` 之讀寫與遷移碼落在同一個 domain），
-//   並**直接對 `.standard` 佈置與清理**——**不可**依賴 `UserDefaults.unitTests` suite。
+// - Important: 被測之 `migrateDeprecatedSettings()` 與 `@AppProperty` 之讀寫現皆以
+//   `OSUtils.defaultsStore` 為據（見 `PrefMgr_Core.swift`），故兩者天然落在同一個 domain，
+//   無須再強制 `OSUtils.isRunningUnitTests` 之真偽，亦不再碰觸 `UserDefaults.standard`。
 // - Important: `migrateDeprecatedSettings()` 為 `private`，唯一入口是 `fixOddPreferencesCore()`。
 //   該函式於每次 `InputSession.activateServer()` 執行，故**冪等**是硬性要求（測試 ④）。
-// - Note: `@AppProperty` 之 `init` 會自我註冊出廠預設值（`SwiftFoundationImpl.swift:200–203`）。
+// - Note: `@AppProperty` 之 `init` 會自我註冊出廠預設值。
 //   故凡「先壓成非預設值、再驗證遷移把它改回來」之斷言，都必須在**建立 `PrefMgr()` 之後**
 //   才壓值——否則測到的是註冊、不是遷移。
 
@@ -22,7 +20,7 @@ import Foundation
 @testable import Shared
 import Testing
 
-@Suite("狂打開關之鍵遷移", .serialized)
+@Suite("狂打開關之鍵遷移")
 struct PrefMgrFuriousTypingMigrationTests {
   // MARK: Internal
 
@@ -30,7 +28,7 @@ struct PrefMgrFuriousTypingMigrationTests {
   func legacyTrueIsCarriedToPinyin() {
     withCleanDefaults { defaults in
       defaults.set(true, forKey: Self.legacyKey)
-      let prefs = PrefMgr()
+      let prefs = PrefMgr(store: defaults)
       // 建立之後才壓成 false ⇒ 若最終為 true，其來源必是遷移碼而非註冊。
       defaults.set(false, forKey: Self.pinyinKey)
       prefs.fixOddPreferencesCore()
@@ -44,7 +42,7 @@ struct PrefMgrFuriousTypingMigrationTests {
   func legacyFalseIsCarriedToPinyin() {
     withCleanDefaults { defaults in
       defaults.set(false, forKey: Self.legacyKey)
-      let prefs = PrefMgr()
+      let prefs = PrefMgr(store: defaults)
       defaults.set(true, forKey: Self.pinyinKey) // 先壓成 true，確保 false 來自遷移。
       prefs.fixOddPreferencesCore()
       #expect(!defaults.bool(forKey: Self.pinyinKey))
@@ -56,7 +54,7 @@ struct PrefMgrFuriousTypingMigrationTests {
   @Test("③ 舊鍵不存在 → 兩側皆不動（不重設為出廠值）")
   func absentLegacyKeyLeavesBothSidesAlone() {
     withCleanDefaults { defaults in
-      let prefs = PrefMgr()
+      let prefs = PrefMgr(store: defaults)
       // 人為把兩側都推離出廠值；若遷移碼誤以「無條件寫入」實作，這裡就會被抓到。
       defaults.set(false, forKey: Self.pinyinKey)
       defaults.set(true, forKey: Self.zhuyinKey)
@@ -72,7 +70,7 @@ struct PrefMgrFuriousTypingMigrationTests {
     for legacyValue in [true, false] {
       withCleanDefaults { defaults in
         defaults.set(legacyValue, forKey: Self.legacyKey)
-        let prefs = PrefMgr()
+        let prefs = PrefMgr(store: defaults)
         prefs.fixOddPreferencesCore()
         let afterFirst = Self.snapshot(defaults)
         prefs.fixOddPreferencesCore()
@@ -90,7 +88,7 @@ struct PrefMgrFuriousTypingMigrationTests {
     for legacyValue in [true, false] as [Bool?] + [nil] {
       withCleanDefaults { defaults in
         if let legacyValue { defaults.set(legacyValue, forKey: Self.legacyKey) }
-        let prefs = PrefMgr()
+        let prefs = PrefMgr(store: defaults)
         prefs.fixOddPreferencesCore()
         #expect(!prefs.furiousTypingEnabled4Zhuyin, "legacy=\(String(describing: legacyValue))")
         #expect(!defaults.bool(forKey: Self.zhuyinKey))
@@ -112,7 +110,7 @@ struct PrefMgrFuriousTypingMigrationTests {
       defaults.set(false, forKey: "ShiftJISShinjitaiOutputEnabled")
       defaults.set(false, forKey: "UsingHotKeyHalfWidthASCII")
 
-      let prefs = PrefMgr()
+      let prefs = PrefMgr(store: defaults)
       prefs.fixOddPreferencesCore()
 
       // ① 本案：拼音側承接、舊鍵消失。
@@ -150,60 +148,20 @@ struct PrefMgrFuriousTypingMigrationTests {
   private static let pinyinKey = UserDef.kFuriousTypingEnabled4Pinyin.rawValue
   private static let zhuyinKey = UserDef.kFuriousTypingEnabled4Zhuyin.rawValue
 
-  /// 本 suite 所佈置／還原之全部鍵：本案之三鍵、既有五段之**輸入**鍵，
-  /// 以及既有五段之**輸出**鍵——後者不可省：`migrateDeprecatedSettings()` 之第一段以
-  /// `candidateStateJKHLBehavior == 0` 為閘，而該鍵是**跨測試共用**之 `UserDefaults.standard`，
-  /// 若前一個測試把它推離 0，本 suite 之 ⑥ 就會靜默略過該段而誤判。
-  private static let touchedKeys: [String] = [
-    legacyKey, pinyinKey, zhuyinKey,
-    // 既有五段之輸入鍵。
-    "UseJKtoMoveCompositorCursorInCandidateState",
-    "UseHLtoMoveCompositorCursorInCandidateState",
-    "ChooseCandidateUsingSpace",
-    "KeyboardParser",
-    "ChineseConversionEnabled",
-    "ShiftJISShinjitaiOutputEnabled",
-    "UsingHotKeyHalfWidthASCII",
-    // 既有五段之輸出鍵（暨被刻意作廢者）。
-    UserDef.kCandidateStateJKHLBehavior.rawValue,
-    UserDef.kSpaceKeyBehaviorAgainstICB.rawValue,
-    UserDef.kKeyboardParser4Zhuyin.rawValue,
-    UserDef.kKeyboardParser4Pinyin.rawValue,
-    UserDef.kKeyboardParser4Dualpin.rawValue,
-    UserDef.kPinyinTypingEnabled.rawValue,
-    UserDef.kDualpinEnabledForPinyinTyping.rawValue,
-    UserDef.kKanjiConversionPreferences.rawValue,
-    UserDef.kUsingHotKeyHalfWidthPunctuation.rawValue,
-    "AllowBoostingSingleKanjiAsUserPhrase",
-  ]
-
   /// 某鍵之現值快照（含「不存在」與「存在但為 false」之區分）。
-  private static func snapshot(_ defaults: UserDefaults) -> [String: Bool?] {
+  private static func snapshot(_ store: InMemoryDefaultsStore) -> [String: Bool?] {
     var result: [String: Bool?] = [:]
     [legacyKey, pinyinKey, zhuyinKey].forEach { key in
-      result[key] = defaults.object(forKey: key) == nil ? nil : defaults.bool(forKey: key)
+      result[key] = store.object(forKey: key) == nil ? nil : store.bool(forKey: key)
     }
     return result
   }
 
-  /// 以「已知狀態」執行：強制 `.standard`、把所涉之鍵清成不存在（`PrefMgr()` 之建構隨即
-  /// 重新註冊出廠預設値）、執行後**還原原值**。
-  private func withCleanDefaults(_ body: (UserDefaults) -> ()) {
-    let defaults = UserDefaults.standard
-    let previousPendingUnitTests = UserDefaults.pendingUnitTests
-    let previousValues = Self.touchedKeys.reduce(into: [String: Any?]()) { result, key in
-      result[key] = defaults.object(forKey: key)
-    }
-    UserDefaults.pendingUnitTests = false
-    Self.touchedKeys.forEach { defaults.removeObject(forKey: $0) }
-    defer {
-      Self.touchedKeys.forEach { defaults.removeObject(forKey: $0) }
-      previousValues.forEach { key, value in
-        guard let value else { return }
-        defaults.set(value, forKey: key)
-      }
-      UserDefaults.pendingUnitTests = previousPendingUnitTests
-    }
-    body(defaults)
+  /// 於**全新的記憶體容器**內執行：容器不觸及磁碟、不跨行程，故無須清理或還原任何鍵，
+  /// 亦不存在「跨測試共用之 `UserDefaults.standard`」所導致的輸出鍵殘留問題。
+  private func withCleanDefaults(_ body: (InMemoryDefaultsStore) -> ()) {
+    // 每一測試用例各得一份全新的記憶體容器，且**不**經行程級全域：
+    // 偏好管理器直接綁定該容器，故用例之間、套房之間皆無共享狀態。
+    body(InMemoryDefaultsStore())
   }
 }

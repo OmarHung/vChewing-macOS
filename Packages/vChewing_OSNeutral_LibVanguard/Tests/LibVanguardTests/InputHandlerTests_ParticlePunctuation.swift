@@ -53,8 +53,8 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     let beamWidthBackup = testHandler.prefs.assemblerBeamWidth
     let halfWidthPunctuationBackup = testHandler.prefs.halfWidthPunctuationEnabled
     defer {
-      LXAssembly.LXFacade.disconnectFactoryDictionary()
-      #expect(LXAssembly.LXFacade.connectToTestFactoryDictionary(textMapData: LXATestsData.textMapTestCoreLXData))
+      testLX?.disconnectFactoryDictionary()
+      #expect(testLX?.connectToTestFactoryDictionary(textMapData: LXATestsData.textMapTestCoreLXData) == true)
       testHandler.prefs.assemblerBeamWidth = beamWidthBackup
       testHandler.prefs.halfWidthPunctuationEnabled = halfWidthPunctuationBackup
       testHandler.prefs.fetchSuggestionsFromPerceptionOverrideModel = true
@@ -65,8 +65,8 @@ extension LibVanguardTestsRoot.InputHandlerTests {
       testSession.switchState(.ofAbortion())
       testHandler.clear()
     }
-    LXAssembly.LXFacade.disconnectFactoryDictionary()
-    #expect(LXAssembly.LXFacade.connectToTestFactoryDictionary(textMapData: textMap))
+    testLX?.disconnectFactoryDictionary()
+    #expect(testLX?.connectToTestFactoryDictionary(textMapData: textMap) == true)
     testHandler.clear()
     testHandler.currentLM.clearUsageLedger()
     testSession.recentCommissions.removeAll()

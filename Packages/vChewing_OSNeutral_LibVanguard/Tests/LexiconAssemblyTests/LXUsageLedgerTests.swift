@@ -212,7 +212,7 @@ struct LXUsageLedgerTests {
   @Test
   func testFacadeSurface() {
     let facade = LXAssembly.LXFacade()
-    let pomGenerationBefore = LXAssembly.LXFacade.pomGeneration
+    let pomGenerationBefore = facade.pomGeneration
     var saveCallbackCount = 0
     var lockHeldDuringCallback = false
     facade.recordUsage(
@@ -227,7 +227,7 @@ struct LXUsageLedgerTests {
     #expect(!lockHeldDuringCallback)
     #expect(facade.lxUsageLedger.entry(readingKey: "ㄨㄛˇ-ㄗㄞˋ", value: "我再")?.count == 1)
     #expect(facade.usageRanking(keyArray: ["ㄨㄛˇ", "ㄗㄞˋ"], now: baseTimestamp).map(\.value) == ["我再"])
-    #expect(LXAssembly.LXFacade.pomGeneration == pomGenerationBefore)
+    #expect(facade.pomGeneration == pomGenerationBefore)
 
     // 只含不可記錄之字詞：不觸發存檔回呼。
     facade.recordUsage([(keyArray: ["_punctuation_,"], value: "，")], timestamp: baseTimestamp) {

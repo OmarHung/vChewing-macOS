@@ -3,6 +3,7 @@
 // This code is released under the SPDX-License-Identifier: `LGPL-3.0-or-later`.
 
 import Foundation
+import SwiftExtension
 
 // MARK: - SessionProtocol
 
@@ -36,6 +37,8 @@ public protocol SessionProtocol: AnyObject, CtlCandidateDelegate,
   static var isASCIIModeForEachClient: [String: Bool] { get set }
   /// 偏好設定。
   var prefs: PrefMgrProtocol { get set }
+  /// 本會話所屬之宿主（動作依賴注入點）。測試可注入專屬宿主以免與行程共用者互相干擾。
+  var host: SessionHost { get }
   /// 上一個被處理過的鍵盤事件。
   var previouslyHandledEvents: [KBEvent] { get set }
   /// 用來標記當前副本是否已處於活動狀態。
@@ -64,6 +67,12 @@ public protocol SessionProtocol: AnyObject, CtlCandidateDelegate,
 }
 
 extension SessionProtocol {
+  /// 未另行指定者一律落在行程級共享宿主。
+  public var host: SessionHost { host }
+
+  /// 本會話此刻所用之辭典副本（隨宿主與輸入模式解析；P316）。
+  public var currentLexicon: LXAssembly.LXFacade { host.lexicon(for: inputMode) }
+
   /// 記錄當前輸入環境是縱排輸入還是橫排輸入。
   public static var isVerticalTyping: Bool { Self.current?.isVerticalTyping ?? false }
 
@@ -71,8 +80,8 @@ extension SessionProtocol {
     // 磁帶模式的 `%quick` 有單獨的選字鍵判定，會在資料不合規時使用 1234567890 選字鍵。
     cassetteQuick: if state.type == .ofInputting, state.isCandidateContainer {
       guard prefs.cassetteEnabled else { break cassetteQuick }
-      guard let cinCandidateKey = inputMode.lexicon.cassetteSelectionKey,
-            SessionHost.shared.validateCandidateKeys(prefs, cinCandidateKey) == nil
+      guard let cinCandidateKey = host.lexicon(for: inputMode).cassetteSelectionKey,
+            host.validateCandidateKeys(prefs, cinCandidateKey) == nil
       else {
         return "1234567890"
       }
@@ -124,7 +133,7 @@ extension SessionProtocol {
   public func construct(clientProxy theClientProxy: (any SessionClientProxy)? = nil) {
     // AsyncOnMain 自身的 Lambda Expression 可能與 Swift 6.2 的 Concurrency 相性不太好。
     // 於是這裡單獨判斷。
-    if UserDefaults.pendingUnitTests {
+    if OSUtils.isRunningUnitTests {
       constructSansAsync(clientProxy: theClientProxy)
     } else {
       asyncOnMain { [weak self] in
@@ -168,11 +177,11 @@ extension SessionProtocol {
   ///   避免 async task 靜默失敗（例：clientProxy 為 nil）時緩存變成「已套用但未實際發生」的髒狀態。
   public func setKeyLayout() {
     let targetLayout: String =
-      (isASCIIMode && SessionHost.shared.isDynamicBasicKeyboardLayoutEnabled())
+      (isASCIIMode && host.isDynamicBasicKeyboardLayoutEnabled())
         ? prefs.alphanumericalKeyboardLayout
         : prefs.basicKeyboardLayout
     guard targetLayout != lastAppliedKeyboardLayout else { return }
-    asyncOnMain(bypassAsync: UserDefaults.pendingUnitTests) { [weak self] in
+    asyncOnMain(bypassAsync: OSUtils.isRunningUnitTests) { [weak self] in
       guard let this = self else { return }
       if let clientProxy = this.clientProxy, !this.isServingIMEItself {
         clientProxy.clientOverrideKeyboard(withName: targetLayout)
@@ -211,7 +220,7 @@ extension SessionProtocol {
     // 的 setValue 連續技打斷（所有操作都在 MainActor 上，不會有時序錯亂）。
     // 快速路徑與完整路徑皆由此 defer 收尾，僅需撰寫一次；單元測試環境同步執行（bypass）。
     defer {
-      asyncOnMain(after: 0.05, bypassAsync: UserDefaults.pendingUnitTests) { [weak self] in
+      asyncOnMain(after: 0.05, bypassAsync: OSUtils.isRunningUnitTests) { [weak self] in
         self?.maybeShowModeDescriptionHintUponActivation()
       }
     }
@@ -232,6 +241,21 @@ extension SessionProtocol {
       }
       state = .ofEmpty()
       inputHandler?.resetRetypeCorrectionLedger() // 重新啟用（焦點變更）：刪除重打修正之帳本作廢。
+      // 素材亦須一併丟棄：本路徑不經 `switchState`，而 `performServerDeactivation()` 對
+      // 「現行 Session」為空操作（`Self.current?.id == id` 即逕行返回），故組字途中之
+      // 重複啟用不會有中間的遞交或清空——殘留之組字器素材（如雙拼待配首鍵期間落入之
+      // 數字節）將在下一次組字時復辟。`clear()` 不觸碰閂滯旗標，與 `switchState` 同徑。
+      inputHandler?.clear()
+      // 狀態既逕行歸零（不經 `switchState`，故不會自動刷新客體顯示），須在此手動刷新：
+      // 客體（如 Spotlight）會於組字途中自發性地重新啟用輸入法，若不同步清空其內文組字區，
+      // 客體所見之未提交標記文字即與 Session 狀態脫鉤——其後之 BkSp／Esc 因狀態非
+      // `.ofInputting` 而放行給客體、亦不示警，該殘留文字遂無以鍵盤清除（Phase 307）。
+      // 無殘留時 `doSetMarkedText` 之去重快取會使本呼為空操作。此處只收拾客體內文組字區；
+      // 浮動組字窗（PCB）於下一次狀態轉移即自動收起，不在本處理之列（見〈已知界線〉）。
+      clearInlineDisplay()
+      // 免疫值與浮動組字窗之顯示同源；狀態既逕行歸零，此處亦須同步解除，
+      // 否則遲到的收合請求會收不掉一個已無組字內容之浮動組字窗（見 SS-Lifecycle-013）。
+      syncPopupCompositionBufferRetention()
       lastAppliedKeyboardLayout = nil
       setKeyLayout()
       return
@@ -251,8 +275,8 @@ extension SessionProtocol {
       this.clientBundleIdentifier = senderBundleID
       // 只要使用者沒有勾選檢查更新、沒有主動做出要檢查更新的操作，就不要檢查更新。
       if this.prefs.checkUpdateAutomatically {
-        asyncOnMain(bypassAsync: UserDefaults.pendingUnitTests) {
-          SessionHost.shared.checkUpdate(false) {
+        asyncOnMain(bypassAsync: OSUtils.isRunningUnitTests) {
+          this.host.checkUpdate(false) {
             senderBundleID == "com.apple.SecurityAgent"
           }
         }
@@ -261,15 +285,15 @@ extension SessionProtocol {
       // isElectronBasedApp 涉及 NSRunningApplication 列舉、Bundle plist 讀取、
       // FileManager 目錄掃描等 I/O 操作，延遲至下一個 RunLoop 迭代以避免阻塞啟用流程。
       this.isClientElectronBased = false
-      asyncOnMain(bypassAsync: UserDefaults.pendingUnitTests) { [weak self] in
+      asyncOnMain(bypassAsync: OSUtils.isRunningUnitTests) { [weak self] in
         self?.isClientElectronBased =
-          SessionHost.shared.isElectronBasedApp(senderBundleID)
+          self?.host.isElectronBasedApp(senderBundleID) ?? false
       }
     }
     this.updateClientProxyObjectIdentifier(clientProxy)
     // 自動啟用肛塞（廉恥模式），除非這一天是愚人節。
     // Date.isTodayTheDate 會建立 DateFormatter，延遲處理以避免阻塞。
-    asyncOnMain(bypassAsync: UserDefaults.pendingUnitTests) { [weak self] in
+    asyncOnMain(bypassAsync: OSUtils.isRunningUnitTests) { [weak self] in
       guard let this = self else { return }
       if !Date.isTodayTheDate(from: 0_401), !this.prefs.shouldNotFartInLieuOfBeep {
         this.prefs.shouldNotFartInLieuOfBeep = true
@@ -294,7 +318,7 @@ extension SessionProtocol {
         this.prefs
           .togglingAlphanumericalModeWithRShift
     }
-    if this.isASCIIMode, !SessionHost.shared.isKeyboardJIS() {
+    if this.isASCIIMode, !host.isKeyboardJIS() {
       if #available(macOS 10.15, *) {
         if let shiftKeyDetector, !shiftKeyDetector.enabled {
           this.isASCIIMode = false
@@ -306,15 +330,20 @@ extension SessionProtocol {
 
     this.state = .ofEmpty()
     this.inputHandler?.resetRetypeCorrectionLedger() // 重新啟用（焦點／客體變更）：帳本作廢。
+    // 同上：素材與客體顯示皆須手動收斂（詳見快速路徑之註）。
+    this.inputHandler?.clear()
+    this.clearInlineDisplay()
+    // 同上：免疫值亦須比照解除（狀態逕行歸零，不會經 `updateCompositionBufferDisplay()`）。
+    this.syncPopupCompositionBufferRetention()
     // 閂滯態不越出當前打字會話之 context：本函式不呼 `resetInputHandler()`，
     // 故須在此獨立重設（靜默）。
     this.inputHandler?.releaseLatchedAlnumState(announce: false)
     this.isActivated = true // 登記啟用狀態。
     this.setKeyLayout()
 
-    if !UserDefaults.pendingUnitTests {
+    if !OSUtils.isRunningUnitTests {
       asyncOnMain {
-        SessionHost.shared.checkMemoryUsage()
+        this.host.checkMemoryUsage()
       }
     }
   }
@@ -341,11 +370,18 @@ extension SessionProtocol {
     } else {
       return
     }
+    // 提示態之直接賦值不得蓋過進行中之組字：本函式於 activation 之後 0.05 秒才執行，
+    // 使用者可能已在那之間開始打字；此時若硬把狀態換成 `.ofEmpty()`，客體所見之未提交
+    // 標記文字即與狀態脫鉤（其後之 BkSp／Esc 因狀態非 `.ofInputting` 而無以清除之，
+    // Phase 307）。已有組字素材時逕不提示——打字模式提示於此時本即多餘。
+    guard !state.hasComposition, inputHandler?.isComposerOrCalligrapherEmpty ?? true else { return }
     let hintTooltip = "► \(hintKey.i18n)"
     var hintState = IMEState.ofEmpty()
     hintState.tooltip = hintTooltip
     hintState.tooltipDuration = 0.7
     state = hintState
+    // 提示態亦為逕行賦值：免疫值比照啟用路徑同步解除（此際已確定無組字內容）。
+    syncPopupCompositionBufferRetention()
     guard let statusUI = ui?.statusUI else { return }
     // 顯示前依客體 accent 同步外觀（文字色／實色背景；StatusUI 實作、tooltip 為 no-op）。
     statusUI.sync(accent: clientAccentColor, locale: localeForFontFallbacks)
@@ -365,7 +401,7 @@ extension SessionProtocol {
       x: lineHeightRect.origin.x, y: topLeftY
     )
     let heightDelta = lineHeightRect.size.height + 4.0
-    asyncOnMain(bypassAsync: UserDefaults.pendingUnitTests) {
+    asyncOnMain(bypassAsync: OSUtils.isRunningUnitTests) {
       statusUI.show(
         tooltip: hintTooltip,
         at: topLeftPoint,
@@ -414,7 +450,7 @@ extension SessionCoreProtocol {
       x: lineHeightRect.origin.x, y: topLeftY
     )
     let heightDelta = lineHeightRect.size.height + 4.0
-    asyncOnMain(bypassAsync: UserDefaults.pendingUnitTests) {
+    asyncOnMain(bypassAsync: OSUtils.isRunningUnitTests) {
       statusUI.show(
         tooltip: text,
         at: topLeftPoint,

@@ -35,13 +35,13 @@ extension LibVanguardTestsRoot.InputHandlerTests {
       ),
     ])
     defer {
-      LXAssembly.LXFacade.disconnectFactoryDictionary()
-      #expect(LXAssembly.LXFacade.connectToTestFactoryDictionary(textMapData: LXATestsData.textMapTestCoreLXData))
+      testLX?.disconnectFactoryDictionary()
+      #expect(testLX?.connectToTestFactoryDictionary(textMapData: LXATestsData.textMapTestCoreLXData) == true)
       clearTestPOM()
       testHandler.clear()
     }
-    LXAssembly.LXFacade.disconnectFactoryDictionary()
-    #expect(LXAssembly.LXFacade.connectToTestFactoryDictionary(textMapData: textMap))
+    testLX?.disconnectFactoryDictionary()
+    #expect(testLX?.connectToTestFactoryDictionary(textMapData: textMap) == true)
     testHandler.clear()
     testHandler.prefs.useSCPCTypingMode = false
     testHandler.prefs.useRearCursorMode = false

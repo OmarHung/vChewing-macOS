@@ -156,8 +156,14 @@ extension InputHandlerProtocol {
   /// 以注拼槽現況為準；R3-a 的自動套用需「含本拍字元」的版本，走 `furiousAbbreviatedCells(romaji:)`。
   /// - Important: **本屬性為拼音專屬**（cells 由拼音字母流經 `PinyinTrie` 推得）；
   ///   注音側之對位為 `furiousZhuyinAbbreviationCells`。
+  ///   該專屬性**由本閘門強制**（P319）：`composer.romajiBuffer` 於注音模式下亦非空——它只是
+  ///   聲介韻之拼音投影，而注音側之 `doBackSpace` 只清聲介韻調、**不回寫**該投影
+  ///   （`_needsRomajiUpdate` 亦未舉），故注音狂打打字後刪鍵即得**殘留之舊投影**
+  ///   （實測 ㄍㄠㄎㄜㄐㄧ 刪兩下後，注拼槽已空而投影仍為 `ji`）。該殘留值有兩個消費端，
+  ///   皆只對拼音有意義：①`generateStateOfInputting` 之 Tooltip 分支（會把它當 Tooltip
+  ///   內容顯示）；②簡拼整詞候選。
   var furiousAbbreviatedCells: [String]? {
-    guard isFuriousTypingModeEffective else { return nil }
+    guard isFuriousTypingModeEffective, isPinyinFamilyTypingMode else { return nil }
     guard composer.intonation.isEmpty else { return nil }
     let romaji = composer.romajiBuffer
     guard !romaji.isEmpty else { return nil }
@@ -1376,6 +1382,9 @@ extension InputHandlerProtocol {
       }
     } else {
       clearComposerAndCalligrapher()
+      // ★ P309：雙拼之未完成素材（待配首鍵）住翻譯狀態機、而非注拼槽，故清組音區時須連帶消費，
+      // 否則該首鍵會以幽靈讀音留在顯示上（與 BkSp 之撤銷分支同一口徑）。
+      if typingMode == .DualPin { dualpinFlushPending() }
     }
 
     let inputting = generateStateOfInputting()
@@ -1514,9 +1523,16 @@ extension InputHandlerProtocol {
   /// - 無修飾前後方向鍵（W3 規則）：狂拼 copilot 窗可見 → 固化＋開出正常選字窗＋
   ///   同一事件交給 `handleCandidate` 導航候選高亮；否則直接 error 退回。
   private func handlePendingReadingCursorKeys(_ input: InputSignalProtocol) -> Bool? {
-    guard !composer.isEmpty else { return nil }
-    guard !input.isHoldingAny([.control, .option, .command]) else { return nil }
     guard let session = session else { return nil }
+    // ★ P309：未完成之讀音未必住注拼槽——雙拼之半截之碼住翻譯狀態機、注拼槽恆為空，
+    // 其「未完成」之憑據即狂拼 copilot 窗之可見性。若只問注拼槽，雙拼狂打之無修飾前後
+    // 方向鍵即越過本函式而落回下方之 error 退回（實測 `6ED95318`／`B3BA5257`），與拼音
+    // 狂打之「固化＋開窗＋導航」不一致（事主 2026-10-14 裁定）。
+    // 非狂打之雙拼不在此列：彼時半碼雖待配，然非「狂拼之未完成讀音」，其語意另定於 P302。
+    let hasPendingReadingMaterial = !composer.isEmpty
+      || (session.isFuriousCopilotCandidateWindowVisible && dualpinPendingDisplayText != nil)
+    guard hasPendingReadingMaterial else { return nil }
+    guard !input.isHoldingAny([.control, .option, .command]) else { return nil }
     if input.isShiftHeld {
       // Shift+前後方向鍵：僅狂拼窗可見時固化前方；放行後 handleForward/Backward 的
       // Shift 分支自然生成 marking state（無需遞迴）。非狂拼落回既有守衛。

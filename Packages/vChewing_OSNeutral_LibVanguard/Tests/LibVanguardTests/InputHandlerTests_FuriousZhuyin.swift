@@ -383,7 +383,7 @@ extension LibVanguardTestsRoot.InputHandlerTests {
   /// 之單注音」與「注拼槽內待確認者」；③ **遇完整音節即停**（該鍵不是任何讀音之起頭候選）。
   @Test("IH-FuriousZhuyin-012 Zhuyin abbreviation cells")
   func test_IH_FuriousZhuyin_012_ZhuyinAbbreviationCells() throws {
-    guard let testHandler, let testSession else {
+    guard let testHandler, testSession != nil else {
       Issue.record("testHandler and testSession at least one of them is nil.")
       return
     }
@@ -935,13 +935,13 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     ])
     defer {
       testHandler.currentLM.clearTemporaryData(isFiltering: false)
-      LXAssembly.LXFacade.disconnectFactoryDictionary()
-      #expect(LXAssembly.LXFacade.connectToTestFactoryDictionary(textMapData: LXATestsData.textMapTestCoreLXData))
+      testLX?.disconnectFactoryDictionary()
+      #expect(testLX?.connectToTestFactoryDictionary(textMapData: LXATestsData.textMapTestCoreLXData) == true)
       leaveFuriousTestEnvironment()
     }
     clearTestPOM()
-    LXAssembly.LXFacade.disconnectFactoryDictionary()
-    #expect(LXAssembly.LXFacade.connectToTestFactoryDictionary(textMapData: textMap))
+    testLX?.disconnectFactoryDictionary()
+    #expect(testLX?.connectToTestFactoryDictionary(textMapData: textMap) == true)
     enterPinyinFuriousTestEnvironment()
 
     // ① 控頻配對：同值同讀音、兩倉皆有（使用者側權重遠高於原廠側）。
@@ -1036,7 +1036,7 @@ extension LibVanguardTestsRoot.InputHandlerTests {
   /// （ㄎㄜ 之窗不得出現 ㄎㄞ 等更長讀音之字）。
   @Test("IH-FuriousZhuyin-022 Incomplete prefix bucket matches pinyin side")
   func test_IH_FuriousZhuyin_022_IncompletePrefixBucketMatchesPinyinSide() throws {
-    guard let testHandler, let testSession else {
+    guard testHandler != nil, let testSession else {
       Issue.record("testHandler and testSession at least one of them is nil.")
       return
     }
@@ -1287,7 +1287,7 @@ extension LibVanguardTestsRoot.InputHandlerTests {
   /// 對照組即純注音狂打（同一組按鍵會於第二鍵自動切出前一音節）。
   @Test("IH-FuriousZhuyin-027 Auto chop remains sealed under mixed alnum")
   func test_IH_FuriousZhuyin_027_AutoChopRemainsSealedUnderMixedAlnum() throws {
-    guard let testHandler, let testSession else {
+    guard let testHandler, testSession != nil else {
       Issue.record("testHandler and testSession at least one of them is nil.")
       return
     }
@@ -1309,7 +1309,7 @@ extension LibVanguardTestsRoot.InputHandlerTests {
   /// 對照組：純注音狂打（回退關）之下同一組按鍵**必須**自動切音節。
   @Test("IH-FuriousZhuyin-028 Auto chop still works without mixed alnum")
   func test_IH_FuriousZhuyin_028_AutoChopStillWorksWithoutMixedAlnum() throws {
-    guard let testHandler, let testSession else {
+    guard let testHandler, testSession != nil else {
       Issue.record("testHandler and testSession at least one of them is nil.")
       return
     }
@@ -2143,6 +2143,70 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     }
   }
 
+  // MARK: - 刪鍵後之 Tooltip（P319）
+
+  /// 注音狂打下把**尚未完成拼寫**的讀音刪光（注拼槽回空、組字器仍有前方讀音鍵）時，
+  /// Tooltip 不得冒出該讀音的漢語拼音投影。
+  ///
+  /// 實測序列（大千）：`eldkru` ＝ ㄍㄠ ㄎㄜ ㄐㄧ，再摁兩下 BackSpace 刪掉 ㄐㄧ。
+  /// 病灶是「拼音專屬之簡拼 cells 於注音側亦成立」（`furiousAbbreviatedCells`）：
+  /// `composer.romajiBuffer` 於注音模式下亦非空——它只是聲介韻之拼音投影，而注音側之
+  /// `doBackSpace` 只清聲介韻調、**不回寫**該投影（`_needsRomajiUpdate` 亦未舉），故刪鍵後
+  /// 投影仍停在舊值（此處刪兩下後仍為 `ji`）。`generateStateOfInputting` 之 Tooltip 分支恰以
+  /// `composer.romajiBuffer` 填 Tooltip ⇒ 使用者見到與現況無關之 `ji`。
+  ///
+  /// - Note: 注音側之讀音另有住處（組字區讀音欄、copilot 窗頂端 pane），皆不經該投影；
+  ///   故注音側一旦無待確認讀音，Tooltip 即應為空。
+  @Test("IH-FuriousZhuyin-043 Tooltip stays empty after deleting the pending zhuyin reading")
+  func test_IH_FuriousZhuyin_043_TooltipStaysEmptyAfterDeletingPendingReading() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("testHandler and testSession at least one of them is nil.")
+      return
+    }
+    defer { leaveFuriousTestEnvironment() }
+    enterZhuyinFuriousTestEnvironment()
+    // 報告情境：組字區讀音（連帶 Tooltip）以漢語拼音呈現。
+    testHandler.prefs.showHanyuPinyinInCompositionBuffer = true
+    let backspace = KBEvent.KeyEventData.backspace.asEvent
+
+    typeSentence("eldkru") // ㄍㄠ ㄎㄜ ㄐㄧ
+    #expect(
+      testHandler.assembler.actualKeys == ["ㄍㄠ", "ㄎㄜ"],
+      "實得：\(testHandler.assembler.actualKeys)"
+    )
+    #expect(
+      testHandler.furiousFrontUnfinishedReading == "ㄐㄧ",
+      "前提：待確認讀音應為 ㄐㄧ，實得 `\(testHandler.furiousFrontUnfinishedReading ?? "nil")`。"
+    )
+    #expect(testSession.isFuriousCopilotCandidateWindowVisible, "前提：copilot 窗應在場。")
+
+    // 刪一下：待確認讀音只剩聲母 ㄐ（拼音投影縮為 `j`）。
+    #expect(testHandler.triageInput(event: backspace))
+    #expect(
+      testHandler.furiousFrontUnfinishedReading == "ㄐ",
+      "實得 `\(testHandler.furiousFrontUnfinishedReading ?? "nil")`。"
+    )
+    // 再刪一下：注拼槽回空、前方讀音鍵不動。
+    #expect(testHandler.triageInput(event: backspace))
+    #expect(
+      testHandler.composer.isEmpty,
+      "注拼槽應已回空，實得 `\(testHandler.composer.getComposition())`。"
+    )
+    #expect(
+      testHandler.assembler.actualKeys == ["ㄍㄠ", "ㄎㄜ"],
+      "BackSpace 不得動到前方讀音鍵，實得：\(testHandler.assembler.actualKeys)"
+    )
+    #expect(!testHandler.hasFuriousFrontPending, "待確認讀音已散。")
+    #expect(
+      testHandler.furiousAbbreviatedCells == nil,
+      "拼音專屬之簡拼 cells 不得於注音側成立，實得：\(testHandler.furiousAbbreviatedCells ?? [])"
+    )
+    #expect(
+      testSession.state.tooltip.isEmpty,
+      "注音側無待確認讀音時 Tooltip 應為空，實得 `\(testSession.state.tooltip)`。"
+    )
+  }
+
   // MARK: - Test harness
 
   /// 把測試環境切成注音狂打（其餘輸入法一律關閉），並重置組字狀態。
@@ -2241,7 +2305,7 @@ extension LibVanguardTestsRoot.InputHandlerTests {
 
   /// 還原：回退關、兩側狂打關、排列回標準注音、POM 回出廠。
   private func leaveMixedAlnumTestEnvironment() {
-    guard let testHandler, let testSession else { return }
+    guard let testHandler, testSession != nil else { return }
     testHandler.prefs.mixedAlphanumericalEnabled = false
     testHandler.prefs.fetchSuggestionsFromPerceptionOverrideModel = true
     leaveFuriousTestEnvironment()

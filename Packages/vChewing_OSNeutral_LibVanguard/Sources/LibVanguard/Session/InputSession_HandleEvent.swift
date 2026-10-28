@@ -3,6 +3,7 @@
 // This code is released under the SPDX-License-Identifier: `LGPL-3.0-or-later`.
 
 import Foundation
+import SwiftExtension
 
 // MARK: - Facade
 
@@ -37,7 +38,7 @@ extension SessionProtocol {
 
     // Caps Lock 通知與切換處理。
     if ui?.capsLockHitChecker?.check(event) ?? false {
-      asyncOnMain(bypassAsync: UserDefaults.pendingUnitTests) { [weak self] in
+      asyncOnMain(bypassAsync: OSUtils.isRunningUnitTests) { [weak self] in
         guard let this = self else { return }
         vCLog("CapsLock key tap detected, toggling Alphanumerical Mode if should.")
         let isCapsLockTurnedOn = this.ui?.capsLockToggler?.isOn ?? false
@@ -49,7 +50,7 @@ extension SessionProtocol {
         guard this.prefs.showNotificationsWhenTogglingCapsLock else { return }
         guard !this.prefs.bypassNonAppleCapsLockHandling else { return }
         let status = "i18n:NotificationSwitch.Revolver".i18n
-        SessionHost.shared.notify(
+        this.host.notify(
           isCapsLockTurnedOn
             ? "[Caps Lock ON] " + "i18n:Menu.AlphanumericalInputMode".i18n + "\n" + status
             : "[Caps Lock OFF] " + "i18n:Menu.ChineseInputMode".i18n + "\n" + status
@@ -86,6 +87,12 @@ extension SessionProtocol {
   }
 
   private func handleKeyDown(event: KBEvent) -> Bool {
+    // 本輪派送結束前務必結算暫定狀態：它們刻意略過了客體之組字區顯示寫入（見
+    // `SessionCoreProtocol.switchState`），若不在此補寫，客體會永遠停在上一輪之顯示。
+    // 用 `defer` 之故：本函式出口繁多（略過的按鍵、無客體、修飾鍵變更等），
+    // 而暫定狀態只可能在同一輪內被生成、故亦應在同輪內被結算。
+    defer { settleProvisionalStateIfNeeded() }
+
     // 先放過一些以 .command 觸發的熱鍵（包括剪貼簿熱鍵）。
     if state.type == .ofEmpty, event.isSingleCommandBasedLetterHotKey { return false }
 
@@ -146,7 +153,7 @@ extension SessionProtocol {
     }
 
     /// 除非核心辭典有載入，否則一律蜂鳴。
-    if !SessionHost.shared.isCoreDBConnected() {
+    if !host.isCoreDBConnected() {
       if (event as InputSignalProtocol).isReservedKey { return false }
       var newState: State = .ofEmpty()
       newState.tooltip = "i18n:DictionaryStatus.FactoryDictNotLoaded".i18n
@@ -175,7 +182,7 @@ extension SessionProtocol {
 
     // 在非拼音系模式（注音鍵盤；拼音系含狂拼則不需翻譯）的情況下，強制將當前鍵盤佈局
     // 翻譯為美規鍵盤（或指定的其它鍵盤佈局）。狂拼為拼音系，由 isPinyinFamilyTypingMode 涵蓋。
-    if !inputHandler.isPinyinFamilyTypingMode || SessionHost.shared.isDynamicBasicKeyboardLayoutEnabled() {
+    if !inputHandler.isPinyinFamilyTypingMode || host.isDynamicBasicKeyboardLayoutEnabled() {
       var defaultLayout = LatinKeyboardMappings(rawValue: prefs.basicKeyboardLayout) ??
         .qwerty
       if let parser = KeyboardParser(rawValue: prefs.keyboardParser) {
@@ -213,7 +220,7 @@ extension SessionProtocol {
       if [.ofEmpty].contains(state.type) { ui?.tooltipUI?.hide() }
 
       // 將 Apple 動態鍵盤佈局的 RAW 輸出轉為 ABC 輸出，除非轉換結果與轉換前的內容一致。
-      if SessionHost.shared.isDynamicBasicKeyboardLayoutEnabled(), event.text != eventToDeal.text {
+      if host.isDynamicBasicKeyboardLayoutEnabled(), event.text != eventToDeal.text {
         switchState(.ofCommitting(textToCommit: eventToDeal.text))
         return true
       }
@@ -244,7 +251,7 @@ extension SessionProtocol {
 
       if popNotification {
         let status = "i18n:NotificationSwitch.Revolver".i18n
-        SessionHost.shared.notify(
+        host.notify(
           newValue
             ? "i18n:Menu.AlphanumericalInputMode".i18n + "\n" + status
             : "i18n:Menu.ChineseInputMode".i18n + "\n" + status

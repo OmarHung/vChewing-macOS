@@ -14,23 +14,28 @@ extension POMTestSuite {
   /// `replayApplicator` 這類回呼，而回呼又取 `LXPerceptor` 的鎖，即與 `LXPerceptor` 的持鎖路徑
   /// （`markKeyForUpsert(_:)`／`markKeyForRemoval(_:)`）構成取鎖順序倒置——背景存檔與加詞／濾除
   /// 相撞時永久死鎖。本模組以 `isLockHeld` 探針把該紀律釘成可回歸的斷言。
-  @Suite(.serialized)
-  struct POMLockDisciplineTests {
+  @Suite
+  final class POMLockDisciplineTests {
     // MARK: Internal
+
+    /// 本套房專屬之儲存後端：資料一律留在記憶體內、不落地，亦不經行程級全域，
+    /// 故與其他套房（乃至同一套房之其他測試用例）不共用任何硬碟區域。
+    /// 每一測試用例各得一份新的套房實例，故各得一份新的後端。
+    let locator = InMemoryUserDataLocator()
 
     @Test
     func testSaveDataJournalCallbacksRunOutsidePersistorLock() throws {
       let tempURL = makeTempURL("test_pom_lock_discipline_save.json")
       let journalURL = tempURL.appendingPathExtension("journal")
       defer {
-        try? FileManager.default.removeItem(at: tempURL)
-        try? FileManager.default.removeItem(at: journalURL)
+        try? locator.remove(at: tempURL)
+        try? locator.remove(at: journalURL)
       }
       // 快照檔先存在，`saveData` 才會走「追加日誌」分支而不提前改寫完整快照。
-      try "[]".write(to: tempURL, atomically: true, encoding: .utf8)
+      try locator.write(Data("[]".utf8), to: tempURL)
 
       let pair = try makePair()
-      let persistor = LXAssembly.PerceptionPersistor(baseURL: tempURL)
+      let persistor = LXAssembly.PerceptionPersistor(baseURL: tempURL, locator: locator)
       persistor.markKeyForUpsert(pair.key)
 
       var lockHeldDuringMapProvider = false
@@ -50,16 +55,16 @@ extension POMTestSuite {
       #expect(!lockHeldDuringMapProvider)
       #expect(!lockHeldDuringKeyValidator)
       // 日誌確實落地，證明上列兩個回呼真的被走過（否則兩個斷言會空轉為真）。
-      #expect(FileManager.default.fileExists(atPath: journalURL.path))
+      #expect(locator.exists(at: journalURL))
     }
 
     @Test
     func testSaveDataSnapshotCallbackRunsOutsidePersistorLock() throws {
       let tempURL = makeTempURL("test_pom_lock_discipline_snapshot.json")
-      defer { try? FileManager.default.removeItem(at: tempURL) }
+      defer { try? locator.remove(at: tempURL) }
 
       // 快照檔不存在，故走「改寫完整快照」分支。
-      let persistor = LXAssembly.PerceptionPersistor(baseURL: tempURL)
+      let persistor = LXAssembly.PerceptionPersistor(baseURL: tempURL, locator: locator)
 
       var lockHeldDuringDataProvider = false
       persistor.saveData(
@@ -72,7 +77,7 @@ extension POMTestSuite {
       )
 
       #expect(!lockHeldDuringDataProvider)
-      #expect(FileManager.default.fileExists(atPath: tempURL.path))
+      #expect(locator.exists(at: tempURL))
     }
 
     @Test
@@ -80,20 +85,20 @@ extension POMTestSuite {
       let tempURL = makeTempURL("test_pom_lock_discipline_load.json")
       let journalURL = tempURL.appendingPathExtension("journal")
       defer {
-        try? FileManager.default.removeItem(at: tempURL)
-        try? FileManager.default.removeItem(at: journalURL)
+        try? locator.remove(at: tempURL)
+        try? locator.remove(at: journalURL)
       }
 
       let pair = try makePair()
-      try JSONEncoder().encode([pair]).write(to: tempURL, options: .atomic)
+      try locator.write(JSONEncoder().encode([pair]), to: tempURL)
       // 日誌記錄的編碼鍵名與 `JournalRecord` 的 Codable 合成結果一致。
       let record: [String: Any] = [
         "operation": "upsert",
         "pair": try JSONSerialization.jsonObject(with: JSONEncoder().encode(pair)),
       ]
-      try JSONSerialization.data(withJSONObject: record).write(to: journalURL, options: .atomic)
+      try locator.write(JSONSerialization.data(withJSONObject: record), to: journalURL)
 
-      let persistor = LXAssembly.PerceptionPersistor(baseURL: tempURL)
+      let persistor = LXAssembly.PerceptionPersistor(baseURL: tempURL, locator: locator)
 
       var lockHeldDuringLoadCallback = false
       var lockHeldDuringKeyValidator = false

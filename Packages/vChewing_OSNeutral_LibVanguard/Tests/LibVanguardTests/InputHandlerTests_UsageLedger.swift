@@ -53,8 +53,8 @@ extension LibVanguardTestsRoot.InputHandlerTests {
       ),
     ])
     defer {
-      LXAssembly.LXFacade.disconnectFactoryDictionary()
-      #expect(LXAssembly.LXFacade.connectToTestFactoryDictionary(textMapData: LXATestsData.textMapTestCoreLXData))
+      testLX?.disconnectFactoryDictionary()
+      #expect(testLX?.connectToTestFactoryDictionary(textMapData: LXATestsData.textMapTestCoreLXData) == true)
       testHandler.prefs.candidateUsageLedgerEnabled = true
       testHandler.prefs.fetchSuggestionsFromPerceptionOverrideModel = true
       testHandler.prefs.enforceETenDOSCandidateSequence = true
@@ -65,8 +65,8 @@ extension LibVanguardTestsRoot.InputHandlerTests {
       testSession.switchState(.ofAbortion())
       testHandler.clear()
     }
-    LXAssembly.LXFacade.disconnectFactoryDictionary()
-    #expect(LXAssembly.LXFacade.connectToTestFactoryDictionary(textMapData: textMap))
+    testLX?.disconnectFactoryDictionary()
+    #expect(testLX?.connectToTestFactoryDictionary(textMapData: textMap) == true)
     testHandler.clear()
     testHandler.currentLM.clearUsageLedger()
     testHandler.prefs.candidateUsageLedgerEnabled = true

@@ -22,10 +22,19 @@ import Tekkon
 /// 無效之兩鍵序一律出聲示警並丟棄此二鍵，**不得**使其落為原文；示警除鈴聲外，另以
 /// Tooltip（`redAlert` 配色、1.2 秒）告知按鍵者方才之雙拼碼不合規。
 ///
-/// 待配之首鍵係「已顯示、尚未落地」之組字素材（以讀音欄呈現），故**凡丟棄該首鍵者，
-/// 皆須連帶刷新組字區**：否則它會以幽靈讀音留在顯示上，而其後之刪除鍵將因注拼槽與組字器
-/// 俱空而只出聲示警、不切換狀態，幽靈遂永留。退位予 `BPMFFullMatchTypewriter` 之三處
-/// 皆走 `delegateToBPMF(_:session:)`，由彼收拾此事。
+/// ★ P310：**不可能開啟任何碼之首鍵**（微軟雙拼之 `a`／`e`／`;`：三者皆只能居次鍵之位）
+/// 亦比照此例，惟示警文案另有專屬者（`ErrorMessage.InvalidDualpinFirstKey`）——該鍵既永不成碼，
+/// 收下只會令次鍵必不成碼，並令中斷鍵落於「有素材待結算、實則無物可結算」之窘境
+/// （noop＋蜂鳴，P309 之遺構）。**本判準與狂打開關無涉**：一個鍵之能否起碼係方案鍵位之事實，
+/// 與狂打之種種語義皆不相干，故狂打與非狂打一律當場示警並丟棄之（事主 2026-10-15 明示範圍）。
+///
+/// 待配之首鍵係「已顯示、尚未落地」之組字素材（以讀音欄呈現），且在狂打側即「未完成之讀音」。
+/// ★ P309：其存續與處置一律比照非雙拼之拼音——非碼鍵所觸發之「先結算、再落本鍵」各站點
+/// （標點／數字／Tab／Enter／方向鍵／空白鍵）會就地固化它並連帶消費之（見
+/// `solidifyFuriousFrontReading` 之 P309 分支）；未經消化之按鍵則不切態，該首鍵留待次鍵續配，
+/// 與拼音側之未完成讀音同命。故狂打側之退位路徑（`delegateToBPMF`）不再先行作廢首鍵、
+/// 亦不再代為切態；**非狂打側**則無固化之語義，仍照 P302 逕行作廢並收拾顯示殘留。
+/// 刪除鍵（BkSp／Delete 之撤銷分支）仍為就地撤銷之終局動作。
 @frozen
 public struct DualpinTypewriter<Handler: InputHandlerProtocol>: TypewriterProtocol {
   // MARK: Lifecycle
@@ -73,7 +82,8 @@ public struct DualpinTypewriter<Handler: InputHandlerProtocol>: TypewriterProtoc
     let inputText = (input.inputTextIgnoringModifiers ?? input.text).lowercased()
       .applyingTransformFW2HW(reverse: false)
     guard isCodeKeyCandidate(input, inputText: inputText), let key = inputText.first else {
-      // 非單一可列印字元者（修飾鍵、功能鍵、多字元輸入）一律照舊，但待配之首鍵就此作廢。
+      // 非單一可列印字元者（修飾鍵、功能鍵、多字元輸入）一律照舊轉交 BPMF 打字機；
+      // ★ P309：待配之首鍵不在此作廢——其處置交拼音側決定（見 `delegateToBPMF`）。
       return delegateToBPMF(input, session: session)
     }
     // 碼鍵：組音區內若尚有前一音節，先固化它——連同其同碼重碼詞幹。
@@ -119,6 +129,19 @@ public struct DualpinTypewriter<Handler: InputHandlerProtocol>: TypewriterProtoc
         duration: 1.2
       )
       return true
+    case let .invalidFirstKey(firstKey):
+      // ★ P310：該鍵不可能開啟任何碼（如微軟雙拼之 `a`／`e`／`;`），故本鍵不得入待配之列：
+      // 收下只會令次鍵必不成碼，且令中斷鍵（數字、標點、方向鍵）落於「有素材待結算、實則
+      // 無物可結算」之窘境——彼時諸路徑皆以「素材仍在」為憑據而不知其無可結算，遂生
+      // noop＋蜂鳴（P309 之遺構）。此處逕行示警並丟棄本鍵：無物入待配之列，故亦不必切態。
+      // 本例落在碼鍵判定之初、先於一切狂打分流，故狂打與非狂打皆然。
+      errorCallback("7B4C1E29：雙拼首鍵「\(firstKey)」不可能開啟任何碼，已丟棄。")
+      session.showTooltip(
+        "i18n:ErrorMessage.InvalidDualpinFirstKey".i18n,
+        colorState: .redAlert,
+        duration: 1.2
+      )
+      return true
     case .passthrough:
       // 非碼鍵：本鍵若會被 BPMF 打字機當成拼音之續接字母，須先固化未決音節，
       // 免得前一首節遭續接污染（自訂方案之字母表未必覆蓋 a–z）。
@@ -131,29 +154,39 @@ public struct DualpinTypewriter<Handler: InputHandlerProtocol>: TypewriterProtoc
 
   // MARK: Private
 
-  /// 作廢待配之首鍵後退位予 `BPMFFullMatchTypewriter`，並收拾該首鍵之顯示殘留。
+  /// 退位予 `BPMFFullMatchTypewriter`：非碼鍵一律比照非雙拼之拼音處置。
   ///
-  /// 待配之首鍵係以組字區之讀音欄呈現（`dualpinPendingDisplayText` 參與
-  /// `generateStateOfInputting()` 之組裝），而 `dualpinFlushPending()` 只動翻譯狀態機、
-  /// **不觸狀態**。退位對象若消化了本鍵，其狀態切換即已帶走該顯示；但修飾鍵、功能鍵、
-  /// 方向鍵與多數標點皆非其所收（`consumeReadingInputIfNeeded` 之消費條件不合），
-  /// 本鍵遂落回分診，而那條路多半亦不切換狀態 ⇒ 幽靈首鍵永留顯示，其後之刪除鍵又因
-  /// 注拼槽與組字器俱空而落進 `handleBackSpace` 之早退分支，只出聲示警（9D69908D）。
+  /// ★ P309：**狂打側**之待配首鍵即「未完成之讀音」，故本層**不再**先行作廢之——其結算與消費
+  /// 一律交拼音側之處理路徑決定（事主 2026-10-14 裁定「雙拼的非碼鍵全部按照漢語拼音（非雙拼）
+  /// 的處理方式」）。拼音側凡設有「先結算、再落本鍵」之站點（標點／數字之
+  /// `handlePunctuation`、Tab 與方向鍵、Enter、空白鍵）皆會就地固化該首鍵並連帶消費之
+  /// （見 `solidifyFuriousFrontReading` 之 P309 分支）；未經消化之按鍵則照舊落回分診、由客體
+  /// 自行處置，此時該首鍵與拼音側之未完成讀音同命：留待次鍵續配，不另切態。
   ///
-  /// 故於退位對象回 `nil`（本鍵未經其消化、逕落回分診）時，由本處依常規刪除鍵之同一口徑
-  /// 刷新狀態：素材盡去時收為 `.ofAbortion()`，否則刷新組字區。退位前**不**刷，免得
-  /// 同一輪內切兩次狀態。
+  /// **非狂打側**無 copilot 候選窗、亦無「前方固化」之語義（`hasFuriousFrontPending` 恆假）：
+  /// 該首鍵純為顯示素材，故仍依 P302 之口徑逕行作廢，並於退位對象未消化本鍵時切態收拾
+  /// 其顯示殘留（幽靈首鍵之病灶見 P307 移交稿）。
+  ///
+  /// ★ P311：上述收拾所用之切態一律為**暫定**者（`State.ofAbortion(isProvisional: true)`）：
+  /// 本鍵旋即由分診之末段落筆（數字落字面節等），故此刻之空筆係同一輪內之過渡——寫給客體
+  /// 只會換來「組字結束旋即重新開始」之閃爍。改由本輪派送結束時之結算
+  /// （`settleProvisionalStateIfNeeded()`）一次寫足。
   private func delegateToBPMF(
     _ input: some InputSignalProtocol,
     session: Handler.Session
   )
     -> Bool? {
+    guard !handler.isFuriousTypingModeEffective else {
+      return BPMFFullMatchTypewriter(handler).handle(input)
+    }
     let hadPending = handler.dualpinPendingDisplayText != nil
     handler.dualpinFlushPending()
     let handled = BPMFFullMatchTypewriter(handler).handle(input)
     guard handled == nil, hadPending else { return handled }
     session.switchState(
-      handler.isConsideredEmptyForNow ? State.ofAbortion() : handler.generateStateOfInputting()
+      handler.isConsideredEmptyForNow
+        ? State.ofAbortion(isProvisional: true)
+        : handler.generateStateOfInputting()
     )
     return handled
   }

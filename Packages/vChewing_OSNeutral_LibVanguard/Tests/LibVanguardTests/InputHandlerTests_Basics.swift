@@ -161,29 +161,25 @@ func cassetteURLForTests(_ fileNameStem: String, ext: String) -> URL? {
 
 // MARK: - LibVanguardTestsRoot.InputHandlerTests
 
-// 歸入本測試目標唯一根 suite（見 `LibVanguardTests_Root.swift`）：本測試目標測試共用全域狀態，不得並行。
+// 歸入本測試目標唯一根 suite（見 `LibVanguardTests_Root.swift`）；各 suite 自持 `TestEnvironment`（P316），故可並行。
 extension LibVanguardTestsRoot {
   /// 唯音輸入法的 InputHandler 單元測試（LibVanguard 模組）。
-  /// 其子 suite `SessionTests` 亦隨之落入同一 serialized 子樹。
-  @Suite("InputHandlerTests", .serialized)
+  /// 其子 suite `SessionTests` 同棲本根之下；每個用例各持一份 `TestEnvironment`，故可並行。
+  @Suite("InputHandlerTests")
   final class InputHandlerTests {
     // MARK: Lifecycle
 
     // MARK: - 測試前後流程
 
     init() throws {
-      // 設定專用於單元測試的 UserDefaults
-      UserDefaults.unitTests = .init(suiteName: "org.atelierInmu.vChewing.LibVanguard.UnitTests")
-      UserDefaults.pendingUnitTests = true
-      UserDef.resetAll()
-
-      // 初期化測試 LM
-      let lx = LXAssembly.LXFacade(isCHS: false)
+      // 本類別之每個用例各得一份環境：辭典、宿主、偏好容器皆各自持有（P316）。
+      let env = TestEnvironment()
+      self.testEnv = env
+      let lx = env.lx
       self.testLX = lx
-      LXAssembly.LXFacade.connectToTestFactoryDictionary(textMapData: LXATestsData.textMapTestCoreLXData)
 
       // 初期化測試用的 handler 和 session
-      let handler = MockInputHandler(lx: lx, pref: PrefMgr.sharedSansDidSetOps)
+      let handler = MockInputHandler(lx: lx, pref: env.prefs)
       let session = MockSession()
       handler.session = session
       session.inputHandler = handler
@@ -195,14 +191,14 @@ extension LibVanguardTestsRoot {
       mainSync {
         testHandler?.errorCallback = nil
         testSession?.switchState(IMEState.ofAbortion())
-        LXAssembly.resetSharedState()
-        UserDefaults.unitTests?.removeSuite(named: "org.atelierInmu.vChewing.LibVanguard.UnitTests")
+        testEnv = nil
         UserDef.resetAll()
       }
     }
 
     // MARK: Internal
 
+    var testEnv: TestEnvironment?
     var testLX: LXAssembly.LXFacade?
     var testHandler: MockInputHandler?
     var testSession: MockSession?

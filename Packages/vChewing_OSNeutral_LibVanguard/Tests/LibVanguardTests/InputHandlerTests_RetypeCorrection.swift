@@ -63,8 +63,8 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     ])
     let clock = RetypeCorrectionFakeClock()
     defer {
-      LXAssembly.LXFacade.disconnectFactoryDictionary()
-      #expect(LXAssembly.LXFacade.connectToTestFactoryDictionary(textMapData: LXATestsData.textMapTestCoreLXData))
+      testLX?.disconnectFactoryDictionary()
+      #expect(testLX?.connectToTestFactoryDictionary(textMapData: LXATestsData.textMapTestCoreLXData) == true)
       testHandler.prefs.retypeCorrectionDetectionEnabled = true
       testHandler.prefs.fetchSuggestionsFromPerceptionOverrideModel = true
       testHandler.prefs.useSCPCTypingMode = false
@@ -76,8 +76,8 @@ extension LibVanguardTestsRoot.InputHandlerTests {
       testHandler.clear()
       testHandler.recentCommitLedger = RecentCommitLedger()
     }
-    LXAssembly.LXFacade.disconnectFactoryDictionary()
-    #expect(LXAssembly.LXFacade.connectToTestFactoryDictionary(textMapData: textMap))
+    testLX?.disconnectFactoryDictionary()
+    #expect(testLX?.connectToTestFactoryDictionary(textMapData: textMap) == true)
     testHandler.clear()
     testHandler.currentLM.clearUsageLedger()
     testHandler.prefs.retypeCorrectionDetectionEnabled = true

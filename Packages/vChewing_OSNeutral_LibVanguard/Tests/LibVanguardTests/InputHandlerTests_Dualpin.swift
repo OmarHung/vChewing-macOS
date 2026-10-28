@@ -122,17 +122,29 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     testSession.resetInputHandler(forceComposerCleanup: true)
     activateDualpin(keyboardParserRawValue: KeyboardParser.ofDualpinMSPY.rawValue)
 
-    // 「a」於 MSPY 是零聲母詞幹之首鍵，但「a;」不成碼。
-    typeSentence("a")
-    #expect(testHandler.dualpinPendingDisplayText == "a")
+    // 尋一組「合法首鍵＋不可能次鍵」之實鍵序：不假設任何特定鍵位之細節。
+    let report = DualpinParser.mspy.validate()
+    guard let firstKey = report.codeToStems.keys.compactMap(\.first).min(),
+          let secondKey = DualpinParser.mspy.alphabet.sorted().first(where: { candidate in
+            !report.codeToStems.keys.contains("\(firstKey)\(candidate)")
+              && !report.aliasCodeToStems.keys.contains("\(firstKey)\(candidate)")
+          })
+    else {
+      Issue.record("無法自方案中尋得不成碼之鍵序。")
+      return
+    }
+    let code = "\(firstKey)\(secondKey)"
+
+    // 首鍵能起碼，故入待配之列；尚未成碼，故不得示警。
+    typeSentence(String(firstKey))
+    #expect(testHandler.dualpinPendingDisplayText == String(firstKey))
     #expect(testHandler.composer.isEmpty)
-    #expect(testSession.state.displayedText == "a")
-    // 首鍵只是待配，尚未成碼，故不得示警。
+    #expect(testSession.state.displayedText == String(firstKey))
     #expect(tooltipUI.showCount == 0, "首鍵待配不得發提示，實際 \(tooltipUI.showCount) 次")
 
-    typeSentence(";")
+    typeSentence(String(secondKey))
     #expect(reportedErrors.count == 1)
-    #expect(reportedErrors.first?.contains("a;") == true)
+    #expect(reportedErrors.first?.contains(code) == true)
     #expect(testHandler.dualpinPendingDisplayText == nil)
     #expect(testHandler.composer.isEmpty)
     #expect(testSession.state.displayedText.isEmpty)
@@ -611,16 +623,18 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     #expect(testHandler.composer.romajiBuffer == "zhong")
   }
 
-  // MARK: - 首鍵作廢後之顯示收拾
+  // MARK: - 非碼鍵一律比照非雙拼之拼音（P309）
 
-  /// 待配首鍵遭「非 BPMF 打字機所收」之鍵作廢時，組字區顯示必須同步刷新。
+  /// 狂打側之待配首鍵即「未完成之讀音」，故其非碼鍵之處置必須與**非雙拼之拼音**逐項一致
+  /// （事主 2026-10-14 裁定：「雙拼的標點走漢語拼音標點處理方法；雙拼的非碼鍵全部按照漢語
+  /// 拼音（非雙拼）的處理方式」）。本測試即該一致性之釘樁：同一顆非碼鍵分別落於
+  /// 「雙拼之半碼待配（微軟雙拼之 `v`＝聲母 zh）」與「拼音之未完成前綴（`zh`）」之下，
+  /// 比對其後之可觀察結果——是否被處理、示警、組字結果、狀態型別、顯示、素材是否被消費。
   ///
-  /// 該首鍵係以讀音欄呈現，`dualpinFlushPending()` 卻只動翻譯狀態機、不觸狀態，故若不刷新，
-  /// 它會成幽靈讀音留在顯示上，而注拼槽與組字器俱空 ⇒ 其後之刪除鍵落進
-  /// `handleBackSpace` 之早退分支，只出聲示警（9D69908D）且不切換狀態，幽靈遂永留
-  /// （收拾者見 `DualpinTypewriter.delegateToBPMF(_:session:)`）。
-  @Test("IH-Dualpin-011 Discarding a pending first key leaves no ghost display")
-  func test_IH_Dualpin_011_DiscardedPendingFirstKeyLeavesNoGhostDisplay() throws {
+  /// - Note: 顯示之嚴格比對只在「素材確已被消費」時成立：素材未被消費時，兩側之未完成原文
+  ///   （雙拼之半碼 vs 拼音之字母流）本即不同形，此差異非語義差異。
+  @Test("IH-Dualpin-011 Non-code keys follow the non-dualpin pinyin path")
+  func test_IH_Dualpin_011_NonCodeKeysFollowPinyinPath() throws {
     guard let testHandler, let testSession else {
       Issue.record("testHandler and testSession at least one of them is nil.")
       return
@@ -634,45 +648,112 @@ extension LibVanguardTestsRoot.InputHandlerTests {
       testHandler.errorCallback = nil
       deactivateDualpin()
     }
-    testSession.resetInputHandler(forceComposerCleanup: true)
-    activateDualpin(keyboardParserRawValue: KeyboardParser.ofDualpinMSPY.rawValue)
 
-    // 諸鍵皆非雙拼之碼鍵、亦非 BPMF 打字機所收者：本鍵自身之示警不計，要緊的是
-    // 不得留下待配首鍵之殘影。
-    let unconsumedKeys: [KBEvent.KeyEventData] = [
-      .init(chars: ","), .init(chars: "/"), .dataTab,
-      .dataArrowLeft, .dataArrowRight, .forwardDelete,
-    ]
-    for furious in [true, false] {
+    func activatePinyin() {
+      testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+      testHandler.prefs.dualpinEnabledForPinyinTyping = false
+      testHandler.prefs.dualpinSchemaJSON = ""
+      testHandler.ensureKeyboardParser()
+      testHandler.prefs.fetchSuggestionsFromPerceptionOverrideModel = false
+      testHandler.currentLM.syncPrefs()
+    }
+
+    func observe(
+      dualpin: Bool,
+      furious: Bool,
+      key: KBEvent.KeyEventData
+    )
+      -> (
+        handled: Bool?, errors: [String], sentence: [String], display: String,
+        stateType: String, consumed: Bool
+      ) {
+      testSession.resetInputHandler(forceComposerCleanup: true)
       testHandler.prefs.furiousTypingEnabled4Pinyin = furious
-      for key in unconsumedKeys {
+      if dualpin {
+        activateDualpin(keyboardParserRawValue: KeyboardParser.ofDualpinMSPY.rawValue)
         typeSentence("v")
-        #expect(testHandler.dualpinPendingDisplayText == "v")
-        #expect(testSession.state.displayedText == "v")
-
-        _ = testHandler.triageInput(event: key.asEvent)
-        #expect(testHandler.dualpinPendingDisplayText == nil)
-        #expect(testHandler.composer.isEmpty)
-        #expect(testHandler.assembler.isEmpty)
-        #expect(testSession.state.displayedText.isEmpty)
-
-        // 幽靈既去，緊接之刪除鍵即無物可刪：不得誤發「空組字器」之蜂鳴，亦不得留殘影。
-        reportedErrors.removeAll()
-        _ = testHandler.triageInput(event: KBEvent.KeyEventData.backspace.asEvent)
-        #expect(!reportedErrors.contains { $0.hasPrefix("9D69908D") })
-        #expect(testSession.state.displayedText.isEmpty)
+      } else {
+        activatePinyin()
+        typeSentence("zh")
       }
+      reportedErrors.removeAll()
+      let handled = testHandler.triageInput(event: key.asEvent)
+      return (
+        handled: handled,
+        errors: reportedErrors,
+        sentence: testHandler.assembler.assembledSentence.map(\.value),
+        display: testSession.state.displayedText,
+        stateType: "\(testSession.state.type)",
+        consumed: dualpin
+          ? testHandler.dualpinPendingDisplayText == nil
+          : testHandler.composer.romajiBuffer.isEmpty
+      )
+    }
+
+    // 非碼鍵：既不屬雙拼之碼鍵、亦不屬拼音之讀音字母。
+    let nonCodeKeys: [(name: String, key: KBEvent.KeyEventData)] = [
+      ("comma", .init(chars: ",")),
+      ("slash", .init(chars: "/")),
+      ("tab", .dataTab),
+      ("arrowLeft", .dataArrowLeft),
+      ("arrowRight", .dataArrowRight),
+      ("digit9", .init(chars: "9")),
+      ("forwardDelete", .forwardDelete),
+      ("space", .init(chars: " ")),
+      ("enter", .dataEnterReturn),
+    ]
+    // 狂打側之奇偶比對：素材為「未完成之讀音」時，非碼鍵之處置必須逐項與拼音狂打一致。
+    for (name, key) in nonCodeKeys {
+      let context = "（狂打、鍵＝\(name)）"
+      let dp = observe(dualpin: true, furious: true, key: key)
+      let py = observe(dualpin: false, furious: true, key: key)
+      #expect(dp.handled == py.handled, "「是否被處理」不一致\(context)")
+      #expect(
+        dp.errors == py.errors,
+        "示警不一致\(context)：雙拼 \(dp.errors) vs 拼音 \(py.errors)"
+      )
+      #expect(
+        dp.sentence == py.sentence,
+        "組字結果不一致\(context)：雙拼 \(dp.sentence) vs 拼音 \(py.sentence)"
+      )
+      #expect(dp.stateType == py.stateType, "狀態型別不一致\(context)")
+      #expect(dp.consumed == py.consumed, "素材之消費不一致\(context)")
+      if dp.consumed, py.consumed {
+        #expect(
+          dp.display == py.display,
+          "顯示不一致\(context)：雙拼 \(dp.display) vs 拼音 \(py.display)"
+        )
+      }
+      // 幽靈顯示之禁令：素材既已被消費，顯示不得再現該半截之碼。
+      if dp.consumed {
+        #expect(
+          !dp.display.contains("v"),
+          "首鍵既已消費，不得留幽靈讀音於顯示\(context)：\(dp.display)"
+        )
+      }
+    }
+
+    // 非狂打側**不**比照拼音：彼時之非碼鍵為音節邊界，雙拼於 P302 定為「逕捨半碼、本鍵交予
+    // 使用者端」（拼音側則因未完成讀音仍在注拼槽而被示警吞下）。此差異係既有之設計抉擇，
+    // 不屬 P309 之範疇，惟其不變量——**半碼不留存**——於兩側皆須成立。
+    for (name, key) in nonCodeKeys {
+      let dp = observe(dualpin: true, furious: false, key: key)
+      #expect(dp.consumed, "非狂打之雙拼於非碼鍵後不得留存半碼（鍵＝\(name)）")
+      #expect(
+        !dp.display.contains("v"),
+        "非狂打之雙拼於非碼鍵後不得留幽靈讀音（鍵＝\(name)）：\(dp.display)"
+      )
     }
   }
 
   // MARK: - 不可能起碼之鍵序
 
-  /// 微軟雙拼之零聲母前綴鍵為 `o`（啊＝`oa`），故**無任何碼起於 `a`**：首鍵「a」不可能起碼，
-  /// 兩鍵之「aa」自不成碼（GB/T 34947-2017 之零聲母鍵為 `a`，同一鍵序於彼反倒是主碼）。
-  /// 本測試目標鎖定該鍵序之結局為架構再定之三之裁定——丟棄兩鍵、示警（鈴聲＋redAlert 配色、
-  /// 1.2 秒之 Tooltip）、不留讀音；尤不得因別名或其他途徑而落為 啊（零聲母讀音）。
-  @Test("IH-Dualpin-012 Impossible first key pair aa is rejected, not read")
-  func test_IH_Dualpin_012_ImpossibleFirstKeyPairIsRejected() throws {
+  /// 微軟雙拼之零聲母前綴鍵為 `o`（啊＝`oa`），故**無任何碼起於 `a`**：首鍵「a」本身即不可能起碼
+  /// （GB/T 34947-2017 之零聲母鍵為 `a`，同一鍵序於彼反倒是主碼）。
+  /// ★ P310：該鍵於按下當場即示警（鈴聲＋redAlert 配色、1.2 秒之 Tooltip）並逕行丟棄——既不進
+  /// 待配之列、亦不落原文；故「aa」永無湊碼之機會，尤不得被讀成 啊（零聲母讀音）。
+  @Test("IH-Dualpin-012 First key that can start no code is alerted and dropped")
+  func test_IH_Dualpin_012_ImpossibleFirstKeyIsRejected() throws {
     guard let testHandler, let testSession else {
       Issue.record("testHandler and testSession at least one of them is nil.")
       return
@@ -699,22 +780,27 @@ extension LibVanguardTestsRoot.InputHandlerTests {
       testHandler.prefs.furiousTypingEnabled4Pinyin = furious
       reportedErrors.removeAll()
 
-      // 首鍵縱入待配之列，亦不得落任何讀音，且不得示警。
+      // 首鍵本身即不可能起碼：按下當場示警一次、逕行丟棄——不入待配之列、零讀音。
       typeSentence("a")
-      #expect(testHandler.composer.isEmpty)
-      #expect(testHandler.assembler.isEmpty)
-      #expect(tooltipUI.showCount == 0, "首鍵待配不得發提示（furious＝\(furious)）")
-
-      // 次鍵使之不成碼：示警、兩鍵俱丟、零讀音（尤其不得為 ㄚ 之零聲母讀音）。
-      typeSentence("a")
-      #expect(!reportedErrors.isEmpty, "不成碼之兩鍵序應示警。")
+      #expect(!reportedErrors.isEmpty, "不可能起碼之首鍵應示警。")
       #expect(
         tooltipUI.showCount == 1,
-        "不成碼之兩鍵序應發一次提示（furious＝\(furious)），實際 \(tooltipUI.showCount) 次"
+        "不可能起碼之首鍵應發一次提示（furious＝\(furious)），實際 \(tooltipUI.showCount) 次"
       )
-      #expect(tooltipUI.shownTooltip == "i18n:ErrorMessage.InvalidDualpinCode".i18n)
+      #expect(tooltipUI.shownTooltip == "i18n:ErrorMessage.InvalidDualpinFirstKey".i18n)
       #expect(tooltipUI.shownDuration == 1.2)
       #expect(tooltipUI.shownColorState == .redAlert)
+      #expect(
+        testHandler.dualpinPendingDisplayText == nil,
+        "該鍵不得入待配之列（furious＝\(furious)）"
+      )
+      #expect(testHandler.composer.isEmpty)
+      #expect(testHandler.assembler.isEmpty)
+      #expect(testSession.state.displayedText.isEmpty)
+
+      // 再敲一次亦然：兩鍵永無湊成一碼之機會，尤不得落為 啊（零聲母讀音）。
+      typeSentence("a")
+      #expect(tooltipUI.showCount == 2, "（furious＝\(furious)）")
       #expect(testHandler.dualpinPendingDisplayText == nil)
       #expect(testHandler.composer.isEmpty)
       #expect(testHandler.assembler.isEmpty)
@@ -774,6 +860,140 @@ extension LibVanguardTestsRoot.InputHandlerTests {
         testHandler.assembler.assembledSentence.map(\.value) == ["1", "2", "3"],
         "數字應逐鍵落為字面節（furious＝\(furious)）"
       )
+    }
+  }
+
+  // MARK: - 待配首鍵期間之數字鍵（P309 之釘樁）
+
+  /// 狂打側之待配首鍵即「未完成之讀音」：數字鍵到達時，先結算該讀音（與拼音側之
+  /// `handlePunctuation` 同一條路：先固化前方讀音、再落本鍵），該數字仍落為一般字面節；
+  /// 不示警、亦不留待配之首鍵（其素材已隨固化而去）。
+  ///
+  /// - Note: **非狂打側**不在此列——彼時無 copilot 候選窗、亦無「前方固化」之語義，
+  ///   該首鍵純為顯示素材，故依 P302 之口徑逕行作廢：素材不留、數字仍落字面節。
+  ///   兩側之共同點（數字落字面節、狀態為 `.ofInputting` 而得為 BkSp 所刪）即
+  ///   `SS-Lifecycle-012` 所關切之病灶之外緣。
+  @Test("IH-Dualpin-017 Digit during a pending first key settles the front then lands literally")
+  func test_IH_Dualpin_017_DigitDuringPendingFirstKeySettlesThenLands() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("testHandler and testSession at least one of them is nil.")
+      return
+    }
+    clearTestPOM()
+    var reportedErrors: [String] = []
+    testHandler.errorCallback = { reportedErrors.append($0) }
+    let originalFurious = testHandler.prefs.furiousTypingEnabled4Pinyin
+    defer {
+      testHandler.prefs.furiousTypingEnabled4Pinyin = originalFurious
+      testHandler.errorCallback = nil
+      deactivateDualpin()
+    }
+    testSession.resetInputHandler(forceComposerCleanup: true)
+    activateDualpin(keyboardParserRawValue: KeyboardParser.ofDualpinMSPY.rawValue)
+
+    for furious in [true, false] {
+      for digit in ["2", "9"] {
+        testSession.resetInputHandler(forceComposerCleanup: true)
+        testHandler.prefs.furiousTypingEnabled4Pinyin = furious
+        reportedErrors.removeAll()
+
+        // 首鍵縱入待配之列，亦不得落任何讀音，且不得示警。
+        typeSentence("s")
+        #expect(testHandler.composer.isEmpty)
+        #expect(testHandler.assembler.isEmpty)
+        #expect(testHandler.dualpinPendingDisplayText == "s")
+
+        typeSentence(digit)
+        #expect(
+          testHandler.dualpinPendingDisplayText == nil,
+          "數字鍵落定後首鍵不得仍待配（furious＝\(furious)、鍵＝\(digit)）"
+        )
+        #expect(
+          reportedErrors.isEmpty,
+          "數字鍵不示警（furious＝\(furious)、鍵＝\(digit)）：\(reportedErrors)"
+        )
+        let sentence = testHandler.assembler.assembledSentence.map(\.value)
+        #expect(
+          sentence.last == digit,
+          "數字應落為字面節（furious＝\(furious)、鍵＝\(digit)）：\(sentence)"
+        )
+        #expect(
+          testSession.state.type == .ofInputting,
+          "落定後應為組字中，方得為 BkSp 所刪（furious＝\(furious)、鍵＝\(digit)）"
+        )
+        // 狂打側：首鍵之讀音先結算入庫，故除數字節外尚有一格；非狂打側：首鍵逕行作廢，
+        // 只餘數字節。
+        #expect(
+          sentence.count == (furious ? 2 : 1),
+          "狂打側應先結算讀音桶（furious＝\(furious)、鍵＝\(digit)）：\(sentence)"
+        )
+      }
+    }
+  }
+
+  // MARK: - 不可能起碼之首鍵與其後之數字鍵（P310 之釘樁）
+
+  /// 事主 2026-10-15 報：首鍵不可能起碼時（微軟雙拼之 `a`／`e`／`;`），copilot 候選窗無由成立；
+  /// 若任其入待配之列，其後之數字鍵即落於「有素材待結算、實則無物可結算」之窘境——標點路徑之
+  /// 固化不成，反遭 `A9B69908D` 守衛吞鍵：noop＋蜂鳴。
+  /// ★ P310：該首鍵按下當場即示警並丟棄，故隨後之數字鍵與平常無異——逕落字面節、不再蜂鳴。
+  @Test("IH-Dualpin-018 Dead first key is dropped; a following digit lands literally")
+  func test_IH_Dualpin_018_DeadFirstKeyThenDigit() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("testHandler and testSession at least one of them is nil.")
+      return
+    }
+    clearTestPOM()
+    var reportedErrors: [String] = []
+    testHandler.errorCallback = { reportedErrors.append($0) }
+    let sessionUI = MockSessionUI()
+    testSession.ui = sessionUI
+    let originalFurious = testHandler.prefs.furiousTypingEnabled4Pinyin
+    defer {
+      testHandler.prefs.furiousTypingEnabled4Pinyin = originalFurious
+      testHandler.errorCallback = nil
+      deactivateDualpin()
+    }
+    testSession.resetInputHandler(forceComposerCleanup: true)
+    activateDualpin(keyboardParserRawValue: KeyboardParser.ofDualpinMSPY.rawValue)
+
+    for furious in [true, false] {
+      for key in ["e", ";"] {
+        let tooltipUI = MockTooltipUI()
+        sessionUI.tooltipUI = tooltipUI
+        testSession.resetInputHandler(forceComposerCleanup: true)
+        testHandler.prefs.furiousTypingEnabled4Pinyin = furious
+        reportedErrors.removeAll()
+
+        // 不可能起碼之首鍵：當場示警並丟棄，既不入待配之列、亦不落任何讀音。
+        typeSentence(key)
+        #expect(tooltipUI.showCount == 1, "（furious＝\(furious)、鍵＝\(key)）")
+        #expect(tooltipUI.shownTooltip == "i18n:ErrorMessage.InvalidDualpinFirstKey".i18n)
+        #expect(tooltipUI.shownDuration == 1.2)
+        #expect(tooltipUI.shownColorState == .redAlert)
+        #expect(testHandler.dualpinPendingDisplayText == nil)
+        #expect(
+          testHandler.assembler.isEmpty,
+          "首鍵不得落任何讀音（furious＝\(furious)、鍵＝\(key)）"
+        )
+
+        // 其後之數字鍵：首鍵既已作廢，本鍵即無待結算之素材——逕落字面節，不得 noop＋蜂鳴。
+        reportedErrors.removeAll()
+        typeSentence("9")
+        #expect(
+          reportedErrors.isEmpty,
+          "首鍵既已作廢，數字鍵不得蜂鳴（furious＝\(furious)、鍵＝\(key)）：\(reportedErrors)"
+        )
+        let sentence = testHandler.assembler.assembledSentence.map(\.value)
+        #expect(
+          sentence == ["9"],
+          "數字應落為字面節（furious＝\(furious)、鍵＝\(key)）：\(sentence)"
+        )
+        #expect(
+          testSession.state.type == .ofInputting,
+          "落定後應為組字中，方得為 BkSp 所刪（furious＝\(furious)、鍵＝\(key)）"
+        )
+      }
     }
   }
 }

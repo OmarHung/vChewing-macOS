@@ -81,6 +81,7 @@
 "i18n:ErrorMessage.InvalidAppBundle" = "当前所选之物并非 macOS 应用程式封包，至少无法发现其唯一标帜（Bundle Identifier）。";
 "i18n:ErrorMessage.InvalidCodePoint" = "内码不正确。";
 "i18n:ErrorMessage.InvalidDualpinCode" = "刚刚敲的双拼码不合规，已丢弃。";
+"i18n:ErrorMessage.InvalidDualpinFirstKey" = "刚刚敲的双拼首键不可能开启任何码，已丢弃。";
 "i18n:ErrorMessage.InvalidSelectionKeys" = "选字键参数资料值不规范。";
 "i18n:ErrorMessage.MaxCandidateKeys" = "选字键最多只能指定 9 个。";
 "i18n:ErrorMessage.MaxResultsReturnable" = "仅能给出前 15 笔结果。";
@@ -465,7 +466,7 @@
 "i18n:UserDef.kCheckUpdateAutomatically.shortTitle" = "自动检查软体更新";
 "i18n:UserDef.kChineseConversionEnabled.shortTitle" = "自动将繁体中文字转为康熙正体字";
 "i18n:UserDef.kClassicHaninKeyboardSymbolModeShortcutEnabled.shortTitle" = "亦使用「\\」或「¥」键启用汉音键盘符号模式";
-"i18n:UserDef.kCNS11643Enabled.shortTitle" = "启用 CNS+GBEX 模式支援 (2026-08-10)";
+"i18n:UserDef.kCNS11643Enabled.shortTitle" = "启用 CNS+GBEX 模式支援 (2026-10-05)";
 "i18n:UserDef.kConsolidateContextOnCandidateSelection.description" = "打比方说，你敲了「章太炎」，你想将「太」改成「泰」。这个操作的作业索引范围是开闭区间 [1,2)，会切到「章太炎」这个节点的所在索引范围 [0,3)。如果没有事前巩固处理的话，这个词会在你选字之后变成诸如「张泰言」这种你不想要的自动选字结果。当且仅当你启用了这个巩固功能的前提下，你选字之后的结果才会是「章泰炎」这种你想要的结果。";
 "i18n:UserDef.kConsolidateContextOnCandidateSelection.shortTitle" = "在使用选字窗选字时，自动巩固上下文";
 "i18n:UserDef.kCurrencyNumeralsEnabled.shortTitle" = "启用货币数字输出";
